@@ -9,8 +9,9 @@
     "backend": "cd backend && npm run dev",
     "frontend": "cd frontend && npm start",
     "dev": "concurrently \"npm run backend\" \"npm run frontend\"",
-    "build": "cd frontend && npm run build",
-    "start": "cd backend && npm start"
+    "build": "npm run install-all && cd frontend && npm run build",
+    "start": "cd backend && npm start",
+    "heroku-postbuild": "npm run build"
   },
   "devDependencies": {
     "concurrently": "^8.2.0"

@@ -1,6 +1,7 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
+const path = require("path");
 require("dotenv").config();
 
 const authRoutes = require("./routes/auth");
@@ -9,7 +10,12 @@ const transactionRoutes = require("./routes/transactions");
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    credentials: true,
+  })
+);
 app.use(express.json());
 
 // Routes
@@ -20,6 +26,16 @@ app.use("/api/transactions", transactionRoutes);
 app.get("/api/health", (req, res) => {
   res.json({ status: "Server is running" });
 });
+
+// Serve static files from React build in production
+if (process.env.NODE_ENV === "production") {
+  app.use(express.static(path.join(__dirname, "../frontend/build")));
+
+  // Handle React routing, return all requests to React app
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(__dirname, "../frontend/build", "index.html"));
+  });
+}
 
 // Connect to MongoDB Atlas (simplified for srv)
 mongoose

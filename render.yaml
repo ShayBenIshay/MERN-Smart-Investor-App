@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: mern-smart-investor
+    env: node
+    buildCommand: npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        fromDatabase:
+          name: smart-investor-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        value: https://mern-smart-investor.onrender.com
+
+databases:
+  - name: smart-investor-db
+    databaseName: smart-investor
+    user: smart-investor-user

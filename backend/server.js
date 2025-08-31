@@ -31,7 +31,9 @@ if (env !== "production") {
 
 // Rate limiting
 app.use("/api/", apiLimiter);
-app.use("/api/auth", authLimiter);
+// Apply strict rate limiting only to login/register endpoints
+app.use("/api/auth/login", authLimiter);
+app.use("/api/auth/register", authLimiter);
 
 // Body parsing with size limits
 app.use(express.json({ limit: "10mb" }));
@@ -39,8 +41,10 @@ app.use(express.json({ limit: "10mb" }));
 // CORS
 app.use(
   cors({
-    origin: config.corsOrigin,
+    origin: config.corsOrigin || "http://localhost:3000",
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 

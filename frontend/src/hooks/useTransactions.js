@@ -61,12 +61,34 @@ export const useDeleteTransaction = () => {
 
   return useMutation({
     mutationFn: (id) => transactionsAPI.delete(id),
+    onMutate: async (deletedId) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries(["transactions"]);
+
+      // Snapshot the previous value
+      const previousTransactions = queryClient.getQueryData(["transactions"]);
+
+      // Optimistically update to remove the transaction
+      queryClient.setQueryData(["transactions"], (old) =>
+        old ? old.filter((transaction) => transaction._id !== deletedId) : []
+      );
+
+      // Return a context object with the snapshotted value
+      return { previousTransactions };
+    },
     onSuccess: () => {
+      // Invalidate and refetch
       queryClient.invalidateQueries(["transactions"]);
       refreshUser();
     },
-    onError: (error) => {
+    onError: (error, variables, context) => {
+      // If the mutation fails, use the context returned from onMutate to roll back
+      queryClient.setQueryData(["transactions"], context?.previousTransactions);
       console.error("Failed to delete transaction:", error);
+    },
+    onSettled: () => {
+      // Always refetch after error or success
+      queryClient.invalidateQueries(["transactions"]);
     },
   });
 };

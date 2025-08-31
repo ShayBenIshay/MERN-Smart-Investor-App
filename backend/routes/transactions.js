@@ -6,6 +6,7 @@ const asyncHandler = require("../utils/asyncHandler");
 const {
   cacheTransactions,
   invalidateTransactionCache,
+  invalidateUserCache,
 } = require("../middleware/cache");
 const { transactionValidation } = require("../middleware/joiValidation");
 
@@ -34,6 +35,7 @@ router.post(
   auth,
   transactionValidation,
   invalidateTransactionCache,
+  invalidateUserCache,
   asyncHandler(async (req, res) => {
     const { operation, executedAt, price, papers, ticker } = req.body;
 
@@ -128,14 +130,27 @@ router.put(
 router.delete(
   "/:id",
   auth,
+  invalidateTransactionCache,
+  invalidateUserCache,
   asyncHandler(async (req, res) => {
+    const { id } = req.params;
+
+    // Validate ObjectId format
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      const error = new Error("Invalid transaction ID format");
+      error.statusCode = 400;
+      throw error;
+    }
+
     const transaction = await Transaction.findOne({
-      _id: req.params.id,
+      _id: id,
       userId: req.user._id,
     });
 
     if (!transaction) {
-      const error = new Error("Transaction not found");
+      const error = new Error(
+        "Transaction not found or doesn't belong to user"
+      );
       error.statusCode = 404;
       throw error;
     }

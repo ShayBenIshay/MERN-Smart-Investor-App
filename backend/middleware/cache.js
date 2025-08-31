@@ -66,7 +66,7 @@ const cacheTransactions = (req, res, next) => {
 const invalidateUserCache = (req, res, next) => {
   const originalJson = res.json;
   res.json = function (data) {
-    if (res.statusCode === 200 && req.user?._id) {
+    if ((res.statusCode === 200 || res.statusCode === 201) && req.user?._id) {
       const userId = req.user._id.toString();
       cacheService.invalidateUserCache(userId);
     }

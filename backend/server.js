@@ -4,11 +4,13 @@ const cors = require("cors");
 const path = require("path");
 const helmet = require("helmet");
 const compression = require("compression");
+const logger = require("./utils/logger");
 require("dotenv").config();
 
 const authRoutes = require("./routes/auth");
 const transactionRoutes = require("./routes/transactions");
 const errorHandler = require("./middleware/errorHandler");
+const requestLogger = require("./middleware/requestLogger");
 const { apiLimiter, authLimiter } = require("./middleware/rateLimiter");
 
 // Environment configuration
@@ -20,6 +22,11 @@ const app = express();
 // Security and performance middleware
 app.use(helmet());
 app.use(compression());
+
+// Request logging (only in development and staging)
+if (env !== "production") {
+  app.use(requestLogger);
+}
 
 // Rate limiting
 app.use("/api/", apiLimiter);
@@ -82,9 +89,9 @@ mongoose
     serverSelectionTimeoutMS: 5000,
     socketTimeoutMS: 45000,
   })
-  .then(() => console.log(`Connected to MongoDB (${env})`))
+  .then(() => logger.info(`Connected to MongoDB`, { environment: env }))
   .catch((err) => {
-    console.error("MongoDB connection error:", err.message);
+    logger.error("MongoDB connection error", { error: err.message });
     process.exit(1);
   });
 
@@ -93,12 +100,15 @@ app.use(errorHandler);
 
 const PORT = config.port;
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT} (${env})`);
+  logger.info(`🚀 Server running on port ${PORT}`, {
+    environment: env,
+    port: PORT,
+  });
 });
 
 // Graceful shutdown
 process.on("SIGTERM", () => {
-  console.log("SIGTERM received, shutting down gracefully");
+  logger.info("SIGTERM received, shutting down gracefully");
   mongoose.connection.close(() => {
     process.exit(0);
   });

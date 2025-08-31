@@ -1,26 +1,55 @@
+const Joi = require("joi");
+
+// Environment validation schema
+const envSchema = Joi.object({
+  NODE_ENV: Joi.string()
+    .valid("development", "production", "test")
+    .default("development"),
+  PORT: Joi.number().default(5000),
+  MONGODB_URI: Joi.string().when("NODE_ENV", {
+    is: "production",
+    then: Joi.required(),
+    otherwise: Joi.string().default(
+      "mongodb://localhost:27017/smart-investor-dev"
+    ),
+  }),
+  MONGODB_URI_TEST: Joi.string().default(
+    "mongodb://localhost:27017/smart-investor-test"
+  ),
+  JWT_SECRET: Joi.string().when("NODE_ENV", {
+    is: "production",
+    then: Joi.string().min(32).required(),
+    otherwise: Joi.string().default("dev_secret_key_change_in_production"),
+  }),
+  FRONTEND_URL: Joi.string().uri().default("http://localhost:3000"),
+}).unknown();
+
+// Validate environment variables
+const { error, value: env } = envSchema.validate(process.env);
+if (error) {
+  throw new Error(`Config validation error: ${error.details[0].message}`);
+}
+
 module.exports = {
   development: {
-    port: process.env.PORT || 5000,
-    mongoUri:
-      process.env.MONGODB_URI || "mongodb://localhost:27017/smart-investor-dev",
-    jwtSecret: process.env.JWT_SECRET || "dev_secret_key_change_in_production",
-    frontendUrl: process.env.FRONTEND_URL || "http://localhost:3000",
-    corsOrigin: process.env.FRONTEND_URL || "http://localhost:3000",
+    port: env.PORT,
+    mongoUri: env.MONGODB_URI,
+    jwtSecret: env.JWT_SECRET,
+    frontendUrl: env.FRONTEND_URL,
+    corsOrigin: env.FRONTEND_URL,
   },
   production: {
-    port: process.env.PORT || 5000,
-    mongoUri: process.env.MONGODB_URI,
-    jwtSecret: process.env.JWT_SECRET,
-    frontendUrl: process.env.FRONTEND_URL,
-    corsOrigin: process.env.FRONTEND_URL || false,
+    port: env.PORT,
+    mongoUri: env.MONGODB_URI,
+    jwtSecret: env.JWT_SECRET,
+    frontendUrl: env.FRONTEND_URL,
+    corsOrigin: env.FRONTEND_URL || false,
   },
   test: {
-    port: process.env.PORT || 5001,
-    mongoUri:
-      process.env.MONGODB_URI_TEST ||
-      "mongodb://localhost:27017/smart-investor-test",
+    port: env.PORT || 5001,
+    mongoUri: env.MONGODB_URI_TEST,
     jwtSecret: "test_secret",
-    frontendUrl: "http://localhost:3000",
-    corsOrigin: "http://localhost:3000",
+    frontendUrl: env.FRONTEND_URL,
+    corsOrigin: env.FRONTEND_URL,
   },
 };

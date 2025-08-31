@@ -73,7 +73,7 @@ const AddTransactionForm = React.memo(({ onTransactionAdded }) => {
 
       // Notify parent component if callback provided
       if (onTransactionAdded) {
-        onTransactionAdded(response.data);
+        onTransactionAdded(response.data.data);
       }
     } catch (err) {
       setError("root", {

@@ -1,9 +1,18 @@
+const logger = require("../utils/logger");
+
 const errorHandler = (err, req, res, next) => {
   let error = { ...err };
   error.message = err.message;
 
-  // Log error for debugging
-  console.error(`Error: ${err.message}`.red);
+  // Log error with context
+  logger.error("API Error", {
+    message: err.message,
+    stack: err.stack,
+    url: req.originalUrl,
+    method: req.method,
+    ip: req.ip,
+    userAgent: req.get("User-Agent"),
+  });
 
   // Mongoose bad ObjectId
   if (err.name === "CastError") {

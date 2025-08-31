@@ -1,15 +1,17 @@
-import React from "react";
+import React, { Suspense, lazy } from "react";
 import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
-import Home from "./pages/Home";
-// import Portfolio from "./pages/Portfolio";
-import Profile from "./pages/Profile";
-import TransactionsHistory from "./pages/TransactionsHistory";
+import LoadingSpinner from "./components/LoadingSpinner";
 import { getDisplayName } from "./utils/userUtils";
 import "./App.css";
+
+// Lazy load pages for better performance
+const Home = lazy(() => import("./pages/Home"));
+const Profile = lazy(() => import("./pages/Profile"));
+const TransactionsHistory = lazy(() => import("./pages/TransactionsHistory"));
 
 // Create a client
 const queryClient = new QueryClient({
@@ -21,7 +23,7 @@ const queryClient = new QueryClient({
   },
 });
 
-function NavBar() {
+const NavBar = React.memo(() => {
   const { user, logout } = useAuth();
 
   return (
@@ -65,7 +67,7 @@ function NavBar() {
       </div>
     </nav>
   );
-}
+});
 
 function AppContent() {
   return (
@@ -74,12 +76,13 @@ function AppContent() {
         <NavBar />
         <main className="main-content">
           <ErrorBoundary>
-            <Routes>
-              <Route path="/" element={<Home />} />
-              {/* <Route path="/portfolio" element={<Portfolio />} /> */}
-              <Route path="/transactions" element={<TransactionsHistory />} />
-              <Route path="/profile" element={<Profile />} />
-            </Routes>
+            <Suspense fallback={<LoadingSpinner />}>
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/transactions" element={<TransactionsHistory />} />
+                <Route path="/profile" element={<Profile />} />
+              </Routes>
+            </Suspense>
           </ErrorBoundary>
         </main>
       </div>

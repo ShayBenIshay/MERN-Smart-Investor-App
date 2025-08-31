@@ -21,6 +21,13 @@
   color: #6b7280;
 }
 
+.transactions-loading {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
 .error-message {
   background-color: #fef2f2;
   color: #dc2626;

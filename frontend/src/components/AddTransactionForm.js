@@ -30,7 +30,7 @@ const transactionSchema = yup.object({
     .required("Execution date is required"),
 });
 
-function AddTransactionForm({ onTransactionAdded }) {
+const AddTransactionForm = React.memo(({ onTransactionAdded }) => {
   const addTransactionMutation = useAddTransaction();
 
   const {
@@ -169,6 +169,8 @@ function AddTransactionForm({ onTransactionAdded }) {
       </form>
     </div>
   );
-}
+});
+
+AddTransactionForm.displayName = "AddTransactionForm";
 
 export default AddTransactionForm;

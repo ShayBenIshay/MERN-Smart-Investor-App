@@ -1,28 +1,20 @@
 import React from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { transactionsAPI } from "../services/api";
-import { useAuth } from "../context/AuthContext";
+import {
+  useTransactions,
+  useDeleteTransaction,
+} from "../hooks/useTransactions";
+import { SkeletonCard } from "../components/Skeleton";
 import "./TransactionsHistory.css";
 
 function TransactionsHistory() {
-  const { refreshUser } = useAuth();
-  const queryClient = useQueryClient();
-
-  // React Query for fetching transactions
   const {
     data: transactions = [],
     isLoading: loading,
     error,
     refetch: fetchTransactions,
-  } = useQuery({
-    queryKey: ["transactions"],
-    queryFn: async () => {
-      console.log("🌐 Fetching transactions from API...");
-      const response = await transactionsAPI.getAll();
-      console.log("📦 Received transactions:", response.data.length);
-      return response.data;
-    },
-  });
+  } = useTransactions();
+
+  const deleteMutation = useDeleteTransaction();
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -40,22 +32,7 @@ function TransactionsHistory() {
     return `$${(parseFloat(price) * parseInt(papers)).toFixed(2)}`;
   };
 
-  // React Query mutation for deleting transactions
-  const deleteMutation = useMutation({
-    mutationFn: transactionsAPI.delete,
-    onSuccess: () => {
-      // Invalidate and refetch transactions
-      queryClient.invalidateQueries(["transactions"]);
-      // Refresh user data
-      refreshUser();
-    },
-    onError: (err) => {
-      alert("Failed to delete transaction. Please try again.");
-      console.error("Delete error:", err);
-    },
-  });
-
-  const handleDelete = async (transactionId) => {
+  const handleDelete = (transactionId) => {
     if (!window.confirm("Are you sure you want to delete this transaction?")) {
       return;
     }
@@ -65,7 +42,12 @@ function TransactionsHistory() {
   if (loading) {
     return (
       <div className="page">
-        <div className="loading">Loading transactions...</div>
+        <h1>Transactions History</h1>
+        <div className="transactions-loading">
+          {Array.from({ length: 3 }, (_, i) => (
+            <SkeletonCard key={i} />
+          ))}
+        </div>
       </div>
     );
   }

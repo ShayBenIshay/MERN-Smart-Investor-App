@@ -1,31 +1,28 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { transactionsAPI } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 import "./TransactionsHistory.css";
 
 function TransactionsHistory() {
   const { refreshUser } = useAuth();
-  const [transactions, setTransactions] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    fetchTransactions();
-  }, []);
-
-  const fetchTransactions = async () => {
-    try {
-      setLoading(true);
-      setError("");
+  // React Query for fetching transactions
+  const {
+    data: transactions = [],
+    isLoading: loading,
+    error,
+    refetch: fetchTransactions,
+  } = useQuery({
+    queryKey: ["transactions"],
+    queryFn: async () => {
+      console.log("🌐 Fetching transactions from API...");
       const response = await transactionsAPI.getAll();
-      setTransactions(response.data);
-    } catch (err) {
-      setError("Failed to load transactions. Please try again.");
-      console.error("Error fetching transactions:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+      console.log("📦 Received transactions:", response.data.length);
+      return response.data;
+    },
+  });
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -43,20 +40,26 @@ function TransactionsHistory() {
     return `$${(parseFloat(price) * parseInt(papers)).toFixed(2)}`;
   };
 
+  // React Query mutation for deleting transactions
+  const deleteMutation = useMutation({
+    mutationFn: transactionsAPI.delete,
+    onSuccess: () => {
+      // Invalidate and refetch transactions
+      queryClient.invalidateQueries(["transactions"]);
+      // Refresh user data
+      refreshUser();
+    },
+    onError: (err) => {
+      alert("Failed to delete transaction. Please try again.");
+      console.error("Delete error:", err);
+    },
+  });
+
   const handleDelete = async (transactionId) => {
     if (!window.confirm("Are you sure you want to delete this transaction?")) {
       return;
     }
-
-    try {
-      await transactionsAPI.delete(transactionId);
-
-      // Refresh transactions list and user cash
-      await Promise.all([fetchTransactions(), refreshUser()]);
-    } catch (err) {
-      alert("Failed to delete transaction. Please try again.");
-      console.error("Delete error:", err);
-    }
+    deleteMutation.mutate(transactionId);
   };
 
   if (loading) {
@@ -71,7 +74,9 @@ function TransactionsHistory() {
     return (
       <div className="page">
         <h1>Transactions History</h1>
-        <div className="error-message">{error}</div>
+        <div className="error-message">
+          Failed to load transactions. Please try again.
+        </div>
         <button onClick={fetchTransactions} className="retry-button">
           Try Again
         </button>

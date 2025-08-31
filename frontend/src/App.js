@@ -3,8 +3,9 @@ import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
+import ErrorBoundary from "./components/ErrorBoundary";
 import Home from "./pages/Home";
-import Portfolio from "./pages/Portfolio";
+// import Portfolio from "./pages/Portfolio";
 import Profile from "./pages/Profile";
 import TransactionsHistory from "./pages/TransactionsHistory";
 import { getDisplayName } from "./utils/userUtils";
@@ -35,11 +36,11 @@ function NavBar() {
               Home
             </Link>
           </li>
-          <li className="nav-item">
+          {/* <li className="nav-item">
             <Link to="/portfolio" className="nav-link">
               Portfolio
             </Link>
-          </li>
+          </li> */}
           <li className="nav-item">
             <Link to="/transactions" className="nav-link">
               Transactions
@@ -72,12 +73,14 @@ function AppContent() {
       <div className="App">
         <NavBar />
         <main className="main-content">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/portfolio" element={<Portfolio />} />
-            <Route path="/transactions" element={<TransactionsHistory />} />
-            <Route path="/profile" element={<Profile />} />
-          </Routes>
+          <ErrorBoundary>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              {/* <Route path="/portfolio" element={<Portfolio />} /> */}
+              <Route path="/transactions" element={<TransactionsHistory />} />
+              <Route path="/profile" element={<Profile />} />
+            </Routes>
+          </ErrorBoundary>
         </main>
       </div>
     </ProtectedRoute>
@@ -86,13 +89,15 @@ function AppContent() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <Router>
-          <AppContent />
-        </Router>
-      </AuthProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <Router>
+            <AppContent />
+          </Router>
+        </AuthProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 

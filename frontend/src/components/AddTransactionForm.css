@@ -121,11 +121,13 @@
 
 /* Input styling improvements */
 .form-group input[type="number"] {
+  appearance: textfield;
   -moz-appearance: textfield; /* Firefox */
 }
 
 .form-group input[type="number"]::-webkit-outer-spin-button,
 .form-group input[type="number"]::-webkit-inner-spin-button {
+  appearance: none;
   -webkit-appearance: none; /* Chrome/Safari */
   margin: 0;
 }
@@ -140,4 +142,24 @@
 .submit-button:focus {
   outline: 2px solid #3b82f6;
   outline-offset: 2px;
+}
+
+/* Error text styling */
+.error-text {
+  color: #dc2626;
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+  display: block;
+}
+
+/* Input error state */
+.form-group input:invalid,
+.form-group select:invalid {
+  border-color: #dc2626;
+}
+
+.form-group input:invalid:focus,
+.form-group select:invalid:focus {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
 }

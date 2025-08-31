@@ -8,7 +8,7 @@ import { useAuth } from "../context/AuthContext";
 export const useTransactions = () => {
   return useQuery({
     queryKey: ["transactions"],
-    queryFn: () => transactionsAPI.getAll().then((res) => res.data),
+    queryFn: () => transactionsAPI.getAll().then((res) => res.data.data),
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
   });

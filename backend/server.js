@@ -6,6 +6,7 @@ require("dotenv").config();
 
 const authRoutes = require("./routes/auth");
 const transactionRoutes = require("./routes/transactions");
+const errorHandler = require("./middleware/errorHandler");
 
 const app = express();
 
@@ -42,6 +43,9 @@ mongoose
   .connect(process.env.MONGODB_URI)
   .then(() => console.log("Connected to MongoDB Atlas"))
   .catch((err) => console.error("MongoDB connection error:", err));
+
+// Global error handler (must be last middleware)
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

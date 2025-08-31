@@ -35,4 +35,8 @@ const transactionSchema = new mongoose.Schema(
   }
 );
 
+// Database indexes for performance
+transactionSchema.index({ userId: 1, createdAt: -1 });
+transactionSchema.index({ ticker: 1, executedAt: -1 });
+
 module.exports = mongoose.model("Transaction", transactionSchema);

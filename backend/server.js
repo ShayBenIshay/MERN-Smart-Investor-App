@@ -2,6 +2,8 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 const path = require("path");
+const helmet = require("helmet");
+const compression = require("compression");
 require("dotenv").config();
 
 const authRoutes = require("./routes/auth");
@@ -9,6 +11,10 @@ const transactionRoutes = require("./routes/transactions");
 const errorHandler = require("./middleware/errorHandler");
 
 const app = express();
+
+// Security and performance middleware
+app.use(helmet());
+app.use(compression());
 
 // Middleware
 app.use(

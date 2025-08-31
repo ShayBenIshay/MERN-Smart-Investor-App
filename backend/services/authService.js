@@ -1,13 +1,14 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 
+// Get config based on environment
+const env = process.env.NODE_ENV || "development";
+const config = require("../config/config")[env];
+
 class AuthService {
   // Generate JWT token
   generateToken(userId) {
-    return jwt.sign(
-      { userId },
-      process.env.JWT_SECRET || "fallback_secret_key_not_for_production"
-    );
+    return jwt.sign({ userId }, config.jwtSecret, { expiresIn: "7d" });
   }
 
   // Format user response (remove sensitive data)

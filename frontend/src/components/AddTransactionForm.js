@@ -40,7 +40,6 @@ const AddTransactionForm = React.memo(({ onTransactionAdded }) => {
     formState: { errors, isSubmitting },
     reset,
     setError,
-    watch,
   } = useForm({
     resolver: yupResolver(transactionSchema),
     defaultValues: {

@@ -1,8 +1,10 @@
 services:
+  # Backend API
   - type: web
-    name: mern-smart-investor
+    name: smart-investor-backend
     env: node
-    buildCommand: npm run build
+    rootDir: backend
+    buildCommand: npm install --legacy-peer-deps
     startCommand: npm start
     envVars:
       - key: NODE_ENV
@@ -14,7 +16,20 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: FRONTEND_URL
-        value: https://mern-smart-investor.onrender.com
+        value: https://smart-investor-frontend.onrender.com
+
+  # Frontend React App
+  - type: web
+    name: smart-investor-frontend
+    env: node
+    rootDir: frontend
+    buildCommand: npm install --legacy-peer-deps && npm run build
+    startCommand: npx serve -s build -p $PORT
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: REACT_APP_API_URL
+        value: https://smart-investor-backend.onrender.com/api
 
 databases:
   - name: smart-investor-db

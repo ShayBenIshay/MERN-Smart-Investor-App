@@ -4,9 +4,10 @@ const User = require("../models/User");
 const auth = require("../middleware/auth");
 const asyncHandler = require("../utils/asyncHandler");
 const {
-  transactionValidation,
-  handleValidationErrors,
-} = require("../middleware/validation");
+  cacheTransactions,
+  invalidateTransactionCache,
+} = require("../middleware/cache");
+const { transactionValidation } = require("../middleware/joiValidation");
 
 const router = express.Router();
 
@@ -14,10 +15,12 @@ const router = express.Router();
 router.get(
   "/",
   auth,
+  cacheTransactions,
   asyncHandler(async (req, res) => {
-    const transactions = await Transaction.find({ userId: req.user._id }).sort({
-      createdAt: -1,
-    });
+    const transactions = await Transaction.find({ userId: req.user._id })
+      .sort({ createdAt: -1 })
+      .lean() // Use lean for better performance on read-only operations
+      .exec();
     res.json({
       success: true,
       data: transactions,
@@ -30,7 +33,7 @@ router.post(
   "/",
   auth,
   transactionValidation,
-  handleValidationErrors,
+  invalidateTransactionCache,
   asyncHandler(async (req, res) => {
     const { operation, executedAt, price, papers, ticker } = req.body;
 

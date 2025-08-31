@@ -3,12 +3,12 @@ const User = require("../models/User");
 const auth = require("../middleware/auth");
 const authService = require("../services/authService");
 const asyncHandler = require("../utils/asyncHandler");
+const { cacheUser, invalidateUserCache } = require("../middleware/cache");
 const {
   registerValidation,
   loginValidation,
   profileUpdateValidation,
-  handleValidationErrors,
-} = require("../middleware/validation");
+} = require("../middleware/joiValidation");
 
 const router = express.Router();
 
@@ -16,7 +16,6 @@ const router = express.Router();
 router.post(
   "/register",
   registerValidation,
-  handleValidationErrors,
   asyncHandler(async (req, res) => {
     const result = await authService.registerUser(req.body);
     res.status(201).json({
@@ -30,7 +29,6 @@ router.post(
 router.post(
   "/login",
   loginValidation,
-  handleValidationErrors,
   asyncHandler(async (req, res) => {
     const result = await authService.loginUser(req.body);
     res.json({
@@ -44,6 +42,7 @@ router.post(
 router.get(
   "/me",
   auth,
+  cacheUser,
   asyncHandler(async (req, res) => {
     res.json({
       success: true,
@@ -57,7 +56,7 @@ router.put(
   "/profile",
   auth,
   profileUpdateValidation,
-  handleValidationErrors,
+  invalidateUserCache,
   asyncHandler(async (req, res) => {
     const result = await authService.updateUserProfile(req.user._id, req.body);
     res.json({

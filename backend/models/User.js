@@ -48,6 +48,8 @@ userSchema.methods.comparePassword = async function (password) {
 };
 
 // Database indexes for performance
-userSchema.index({ email: 1 });
+userSchema.index({ email: 1 }); // Primary lookup index
+userSchema.index({ createdAt: -1 }); // For time-based queries
+userSchema.index({ email: 1, createdAt: -1 }); // Compound index for admin queries
 
 module.exports = mongoose.model("User", userSchema);

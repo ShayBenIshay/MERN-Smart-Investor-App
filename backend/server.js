@@ -11,6 +11,7 @@ const authRoutes = require("./routes/auth");
 const transactionRoutes = require("./routes/transactions");
 const errorHandler = require("./middleware/errorHandler");
 const requestLogger = require("./middleware/requestLogger");
+const cacheService = require("./services/cacheService");
 const { apiLimiter, authLimiter } = require("./middleware/rateLimiter");
 
 // Environment configuration
@@ -73,6 +74,16 @@ app.get("/api/health", async (req, res) => {
   res.status(health.status === "ok" ? 200 : 503).json(health);
 });
 
+// Cache statistics endpoint (development only)
+if (env === "development") {
+  app.get("/api/cache-stats", (req, res) => {
+    res.json({
+      success: true,
+      data: cacheService.getCacheStats(),
+    });
+  });
+}
+
 // Serve static files from React build in production
 if (process.env.NODE_ENV === "production") {
   app.use(express.static(path.join(__dirname, "../frontend/build")));
@@ -83,13 +94,28 @@ if (process.env.NODE_ENV === "production") {
   });
 }
 
-// Connect to MongoDB with better error handling
+// Connect to MongoDB with optimized settings
 mongoose
   .connect(config.mongoUri, {
+    // Connection pooling settings
+    maxPoolSize: 10, // Maximum number of connections
+    minPoolSize: 2, // Minimum number of connections
+    maxIdleTimeMS: 30000, // Close connections after 30 seconds of inactivity
     serverSelectionTimeoutMS: 5000,
     socketTimeoutMS: 45000,
+    // Performance optimizations
+    bufferCommands: false, // Disable mongoose buffering
+    // Additional optimizations
+    heartbeatFrequencyMS: 10000, // Check server every 10 seconds
+    retryWrites: true,
+    w: "majority", // Write concern for better consistency
   })
-  .then(() => logger.info(`Connected to MongoDB`, { environment: env }))
+  .then(() =>
+    logger.info(`Connected to MongoDB`, {
+      environment: env,
+      poolSize: "2-10 connections",
+    })
+  )
   .catch((err) => {
     logger.error("MongoDB connection error", { error: err.message });
     process.exit(1);

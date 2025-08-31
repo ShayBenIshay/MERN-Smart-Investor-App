@@ -2,6 +2,7 @@ import React from "react";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
+import toast from "react-hot-toast";
 import { useAddTransaction } from "../hooks/useTransactions";
 import "./AddTransactionForm.css";
 
@@ -64,6 +65,9 @@ const AddTransactionForm = React.memo(({ onTransactionAdded }) => {
       const response = await addTransactionMutation.mutateAsync(
         transactionData
       );
+
+      // Show success notification
+      toast.success("Transaction added successfully!");
 
       // Reset form on success
       reset();

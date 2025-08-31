@@ -1,7 +1,8 @@
 import React from "react";
+import { LoadingSpinnerProps } from "../types";
 import "./LoadingSpinner.css";
 
-const LoadingSpinner = React.memo(
+const LoadingSpinner: React.FC<LoadingSpinnerProps> = React.memo(
   ({ size = "medium", message = "Loading..." }) => {
     return (
       <div className="loading-container">

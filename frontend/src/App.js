@@ -1,10 +1,12 @@
 import React, { Suspense, lazy } from "react";
 import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "react-hot-toast";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ErrorBoundary from "./components/ErrorBoundary";
 import LoadingSpinner from "./components/LoadingSpinner";
+import { queryClient } from "./config/queryClient";
 import { getDisplayName } from "./utils/userUtils";
 import "./App.css";
 
@@ -13,15 +15,7 @@ const Home = lazy(() => import("./pages/Home"));
 const Profile = lazy(() => import("./pages/Profile"));
 const TransactionsHistory = lazy(() => import("./pages/TransactionsHistory"));
 
-// Create a client
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      gcTime: 10 * 60 * 1000, // 10 minutes (was cacheTime in v4)
-    },
-  },
-});
+// Query client is now imported from config
 
 const NavBar = React.memo(() => {
   const { user, logout } = useAuth();
@@ -97,6 +91,26 @@ function App() {
         <AuthProvider>
           <Router>
             <AppContent />
+            <Toaster
+              position="top-right"
+              toastOptions={{
+                duration: 4000,
+                style: {
+                  background: "#363636",
+                  color: "#fff",
+                },
+                success: {
+                  style: {
+                    background: "#10b981",
+                  },
+                },
+                error: {
+                  style: {
+                    background: "#ef4444",
+                  },
+                },
+              }}
+            />
           </Router>
         </AuthProvider>
       </QueryClientProvider>

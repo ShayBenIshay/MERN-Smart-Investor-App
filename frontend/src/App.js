@@ -12,6 +12,7 @@ import "./App.css";
 
 // Lazy load pages for better performance
 const Home = lazy(() => import("./pages/Home"));
+const Portfolio = lazy(() => import("./pages/Portfolio"));
 const Profile = lazy(() => import("./pages/Profile"));
 const TransactionsHistory = lazy(() => import("./pages/TransactionsHistory"));
 
@@ -32,11 +33,11 @@ const NavBar = React.memo(() => {
               Home
             </Link>
           </li>
-          {/* <li className="nav-item">
+          <li className="nav-item">
             <Link to="/portfolio" className="nav-link">
               Portfolio
             </Link>
-          </li> */}
+          </li>
           <li className="nav-item">
             <Link to="/transactions" className="nav-link">
               Transactions
@@ -73,6 +74,7 @@ function AppContent() {
             <Suspense fallback={<LoadingSpinner />}>
               <Routes>
                 <Route path="/" element={<Home />} />
+                <Route path="/portfolio" element={<Portfolio />} />
                 <Route path="/transactions" element={<TransactionsHistory />} />
                 <Route path="/profile" element={<Profile />} />
               </Routes>

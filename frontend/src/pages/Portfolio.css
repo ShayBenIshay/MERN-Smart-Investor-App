@@ -1,0 +1,370 @@
+/* Portfolio Page Styles */
+.portfolio-container {
+  margin: 20px 0;
+  overflow-x: auto;
+}
+
+.portfolio-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.portfolio-table th {
+  background: #f8f9fa;
+  padding: 12px 16px;
+  text-align: left;
+  font-weight: 600;
+  color: #495057;
+  border-bottom: 2px solid #dee2e6;
+  white-space: nowrap;
+}
+
+.portfolio-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #e9ecef;
+  color: #495057;
+}
+
+.portfolio-table tr:hover {
+  background: #f8f9fa;
+}
+
+.portfolio-table .symbol {
+  font-weight: 600;
+  color: #212529;
+}
+
+.portfolio-table .positive {
+  color: #28a745;
+  font-weight: 500;
+}
+
+.portfolio-table .negative {
+  color: #dc3545;
+  font-weight: 500;
+}
+
+.portfolio-table .totals-row {
+  background: #f8f9fa;
+  border-top: 2px solid #dee2e6;
+}
+
+.portfolio-table .totals-row:hover {
+  background: #f8f9fa;
+}
+
+.portfolio-table .totals-row td {
+  padding: 16px;
+  border-bottom: none;
+}
+
+.portfolio-table .entry-reason {
+  font-style: italic;
+  color: #6c757d;
+  font-size: 0.9em;
+  max-width: 200px;
+  word-wrap: break-word;
+}
+
+.portfolio-table .stop-loss {
+  color: #495057;
+  font-weight: 500;
+}
+
+/* Editable inputs */
+.editable-input {
+  border: 1px solid #e9ecef;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 14px;
+  width: 100%;
+  background: white;
+  transition: border-color 0.2s ease;
+}
+
+.editable-input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
+}
+
+.currency-input {
+  max-width: 100px;
+  text-align: right;
+}
+
+.text-input {
+  max-width: 200px;
+}
+
+/* Portfolio controls */
+.portfolio-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+
+.toggle-all-button {
+  background: #6c757d;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.toggle-all-button:hover {
+  background: #495057;
+}
+
+/* Update controls */
+.update-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 6px;
+  border-left: 4px solid #ffc107;
+}
+
+.update-button {
+  background: #28a745;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.update-button:hover {
+  background: #218838;
+}
+
+.changes-indicator {
+  color: #856404;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* Row collapse/expand functionality */
+.portfolio-row {
+  transition: all 0.3s ease;
+}
+
+.portfolio-row.collapsed {
+  opacity: 0.7;
+}
+
+.portfolio-row.expanded {
+  opacity: 1;
+}
+
+.symbol.clickable {
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: color 0.2s ease;
+}
+
+.symbol.clickable:hover {
+  color: #007bff;
+  background-color: #f8f9fa;
+}
+
+.collapse-icon {
+  font-size: 12px;
+  color: #6c757d;
+  transition: transform 0.2s ease;
+  width: 12px;
+  text-align: center;
+}
+
+.collapsed-placeholder {
+  color: #6c757d;
+  font-style: italic;
+  text-align: center;
+  padding: 8px;
+}
+
+/* Smooth cell transitions */
+.portfolio-table td {
+  transition: all 0.3s ease;
+}
+
+.portfolio-row.collapsed .collapsed-placeholder {
+  animation: fadeIn 0.3s ease;
+}
+
+.portfolio-row.expanded td:not(.symbol) {
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Column collapse/expand functionality */
+.collapsible-header {
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.collapsible-header:hover {
+  background-color: #f8f9fa;
+  color: #007bff;
+}
+
+.collapsible-header .collapse-icon {
+  font-size: 10px;
+  color: #6c757d;
+  margin-right: 6px;
+  transition: transform 0.2s ease;
+}
+
+.collapsible-header:hover .collapse-icon {
+  color: #007bff;
+  transform: scale(1.1);
+}
+
+/* Collapsed column styling */
+.collapsed-header {
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s ease;
+  background-color: #f8f9fa;
+  border-left: 2px solid #dee2e6;
+  border-right: 2px solid #dee2e6;
+  width: 40px;
+  max-width: 40px;
+  min-width: 40px;
+  padding: 8px 4px !important;
+}
+
+.collapsed-header:hover {
+  background-color: #e9ecef;
+  border-color: #007bff;
+}
+
+.collapsed-title {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
+
+.collapsed-title .collapse-icon {
+  font-size: 8px;
+  color: #6c757d;
+  writing-mode: horizontal-tb;
+  transform: rotate(0deg);
+}
+
+.abbreviated-title {
+  font-size: 10px;
+  font-weight: 600;
+  color: #495057;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  line-height: 1;
+}
+
+.collapsed-cell {
+  background-color: #f8f9fa;
+  border-left: 2px solid #dee2e6;
+  border-right: 2px solid #dee2e6;
+  width: 40px;
+  max-width: 40px;
+  min-width: 40px;
+  padding: 8px 4px !important;
+  text-align: center;
+}
+
+.collapsed-data {
+  color: #6c757d;
+  font-size: 12px;
+  opacity: 0.6;
+}
+
+/* Animation for column show/hide */
+@keyframes slideInColumn {
+  from {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+  to {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
+/* Loading and Error States */
+.loading-state,
+.error-state,
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.loading-state h1,
+.error-state h1,
+.empty-state h2 {
+  color: #495057;
+  margin-bottom: 10px;
+}
+
+.loading-state p,
+.error-state p,
+.empty-state p {
+  color: #6c757d;
+  font-size: 16px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .portfolio-table {
+    font-size: 14px;
+  }
+
+  .portfolio-table th,
+  .portfolio-table td {
+    padding: 8px 12px;
+  }
+}

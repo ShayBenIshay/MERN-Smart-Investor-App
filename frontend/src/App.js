@@ -50,7 +50,7 @@ const NavBar = React.memo(() => {
           </li>
           <li className="nav-item">
             <span className="nav-link user-info">
-              {getDisplayName(user)} (${user?.cash || 0})
+              {getDisplayName(user)} (${user?.cash?.toFixed(2) || 0})
             </span>
           </li>
           <li className="nav-item">

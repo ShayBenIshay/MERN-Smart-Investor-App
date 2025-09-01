@@ -12,8 +12,10 @@ const transactionSchema = new mongoose.Schema(
       required: true,
     },
     price: {
-      type: Number,
+      type: mongoose.Schema.Types.Decimal128,
       required: true,
+      get: (v) => parseFloat(v),
+      set: (v) => v.toFixed(2),
     },
     papers: {
       type: Number,
@@ -32,6 +34,8 @@ const transactionSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+    toJSON: { getters: true },
+    toObject: { getters: true },
   }
 );
 

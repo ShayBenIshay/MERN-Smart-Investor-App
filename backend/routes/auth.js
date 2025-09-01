@@ -17,7 +17,7 @@ router.post(
   "/register",
   registerValidation,
   asyncHandler(async (req, res) => {
-    const result = await authService.registerUser(req.body);
+    const result = await authService.registerUser(req.body, res);
     res.status(201).json({
       success: true,
       ...result,
@@ -30,7 +30,7 @@ router.post(
   "/login",
   loginValidation,
   asyncHandler(async (req, res) => {
-    const result = await authService.loginUser(req.body);
+    const result = await authService.loginUser(req.body, res);
     res.json({
       success: true,
       ...result,
@@ -62,6 +62,45 @@ router.put(
     res.json({
       success: true,
       ...result,
+    });
+  })
+);
+
+// Refresh access token
+router.post(
+  "/refresh",
+  asyncHandler(async (req, res) => {
+    const refreshToken = req.cookies.refreshToken;
+
+    if (!refreshToken) {
+      return res.status(400).json({
+        success: false,
+        error: "Refresh token is required",
+      });
+    }
+
+    const result = await authService.refreshAccessToken(refreshToken, res);
+    res.json({
+      success: true,
+      ...result,
+    });
+  })
+);
+
+// Logout
+router.post(
+  "/logout",
+  auth,
+  asyncHandler(async (req, res) => {
+    const refreshToken = req.cookies.refreshToken;
+
+    if (refreshToken) {
+      await authService.logout(req.user._id, refreshToken, res);
+    }
+
+    res.json({
+      success: true,
+      message: "Logged out successfully",
     });
   })
 );

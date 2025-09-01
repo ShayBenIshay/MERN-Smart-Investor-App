@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import { useTransactions } from "./useTransactions";
+import { useQuery } from "@tanstack/react-query";
+import { transactionsAPI } from "../services/api";
 
 // Calculate portfolio from transactions
 const calculatePortfolio = (transactions) => {
@@ -106,11 +107,22 @@ const calculatePortfolio = (transactions) => {
 };
 
 export const usePortfolio = () => {
-  const { data: transactions, isLoading, error } = useTransactions();
+  // Get all transactions without pagination for portfolio calculations
+  const {
+    data: transactions,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["transactions", "all"],
+    queryFn: () =>
+      transactionsAPI.getAllWithoutPagination().then((res) => res.data.data),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
 
   // Calculate portfolio whenever transactions change
   const portfolioData = useMemo(() => {
-    return calculatePortfolio(transactions);
+    return calculatePortfolio(transactions || []);
   }, [transactions]);
 
   return {

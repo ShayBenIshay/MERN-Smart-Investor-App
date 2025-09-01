@@ -7,7 +7,9 @@ const env = process.env.NODE_ENV || "development";
 const config = require("../config/config")[env];
 
 const auth = asyncHandler(async (req, res, next) => {
-  const token = req.header("Authorization")?.replace("Bearer ", "");
+  const token =
+    req.cookies.accessToken ||
+    req.header("Authorization")?.replace("Bearer ", "");
 
   if (!token) {
     return res.status(401).json({ success: false, error: "No token provided" });

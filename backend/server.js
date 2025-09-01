@@ -4,6 +4,7 @@ const cors = require("cors");
 const path = require("path");
 const helmet = require("helmet");
 const compression = require("compression");
+const cookieParser = require("cookie-parser");
 const logger = require("./utils/logger");
 require("dotenv").config();
 
@@ -37,6 +38,7 @@ app.use("/api/auth/register", authLimiter);
 
 // Body parsing with size limits
 app.use(express.json({ limit: "10mb" }));
+app.use(cookieParser());
 
 // CORS
 app.use(

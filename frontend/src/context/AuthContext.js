@@ -18,12 +18,7 @@ export const AuthProvider = ({ children }) => {
 
   // Check if user is logged in on app start
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (token) {
-      getCurrentUser();
-    } else {
-      setLoading(false);
-    }
+    getCurrentUser();
   }, []);
 
   const getCurrentUser = async () => {
@@ -31,7 +26,6 @@ export const AuthProvider = ({ children }) => {
       const response = await authAPI.getCurrentUser();
       setUser(response.data.user);
     } catch (error) {
-      localStorage.removeItem("token");
       setError("Session expired. Please login again.");
     } finally {
       setLoading(false);
@@ -44,11 +38,9 @@ export const AuthProvider = ({ children }) => {
       setLoading(true);
 
       const response = await authAPI.login({ email, password });
-      const { token, user } = response.data;
+      const { user } = response.data;
 
-      localStorage.setItem("token", token);
       setUser(user);
-
       return { success: true };
     } catch (error) {
       const errorMessage = error.response?.data?.error || "Login failed";
@@ -65,11 +57,9 @@ export const AuthProvider = ({ children }) => {
       setLoading(true);
 
       const response = await authAPI.register({ email, password, cash });
-      const { token, user } = response.data;
+      const { user } = response.data;
 
-      localStorage.setItem("token", token);
       setUser(user);
-
       return { success: true };
     } catch (error) {
       const errorMessage = error.response?.data?.error || "Registration failed";
@@ -80,10 +70,15 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem("token");
-    setUser(null);
-    setError("");
+  const logout = async () => {
+    try {
+      await authAPI.logout();
+    } catch (error) {
+      console.error("Logout error:", error);
+    } finally {
+      setUser(null);
+      setError("");
+    }
   };
 
   const refreshUser = async () => {

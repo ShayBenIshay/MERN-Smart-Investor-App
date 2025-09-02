@@ -40,3 +40,56 @@
     background-position: -200% 0;
   }
 }
+
+/* Portfolio Table Skeleton Styles */
+.portfolio-skeleton-container {
+  margin: 20px 0;
+  overflow-x: auto;
+}
+
+.portfolio-skeleton-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.portfolio-skeleton-table th {
+  background: #f8f9fa;
+  padding: 12px 16px;
+  text-align: left;
+  border-bottom: 2px solid #dee2e6;
+  white-space: nowrap;
+}
+
+.portfolio-skeleton-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.portfolio-skeleton-row:hover {
+  background: #f8f9fa;
+}
+
+.portfolio-skeleton-totals {
+  background: #f8f9fa;
+  border-top: 2px solid #dee2e6;
+}
+
+.portfolio-skeleton-totals:hover {
+  background: #f8f9fa;
+}
+
+.portfolio-skeleton-totals td {
+  padding: 16px;
+  border-bottom: none;
+}
+
+.portfolio-skeleton-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}

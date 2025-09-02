@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { usePortfolio } from "../hooks/usePortfolio";
+import { PortfolioTableSkeleton } from "../components/Skeleton";
 import "./Portfolio.css";
 
 function Portfolio() {
@@ -75,10 +76,8 @@ function Portfolio() {
   if (isLoading) {
     return (
       <div className="page">
-        <div className="loading-state">
-          <h1>Loading Portfolio...</h1>
-          <p>Please wait while we fetch your investment data.</p>
-        </div>
+        <h1>Your Portfolio</h1>
+        <PortfolioTableSkeleton />
       </div>
     );
   }

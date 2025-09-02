@@ -51,4 +51,119 @@ export const SkeletonCard = React.memo(({ className = "" }) => (
 
 SkeletonCard.displayName = "SkeletonCard";
 
+export const PortfolioTableSkeleton = React.memo(({ className = "" }) => (
+  <div className={`portfolio-skeleton-container ${className}`}>
+    <div className="portfolio-skeleton-controls">
+      <Skeleton height="32px" width="120px" borderRadius="4px" />
+    </div>
+    <table className="portfolio-skeleton-table">
+      <thead>
+        <tr>
+          <th>
+            <Skeleton height="16px" width="60px" />
+          </th>
+          <th>
+            <Skeleton height="16px" width="100px" />
+          </th>
+          <th>
+            <Skeleton height="16px" width="80px" />
+          </th>
+          <th>
+            <Skeleton height="16px" width="80px" />
+          </th>
+          <th>
+            <Skeleton height="16px" width="90px" />
+          </th>
+          <th>
+            <Skeleton height="16px" width="90px" />
+          </th>
+          <th>
+            <Skeleton height="16px" width="100px" />
+          </th>
+          <th>
+            <Skeleton height="16px" width="70px" />
+          </th>
+          <th>
+            <Skeleton height="16px" width="70px" />
+          </th>
+          <th>
+            <Skeleton height="16px" width="100px" />
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {Array.from({ length: 8 }, (_, i) => (
+          <tr key={i} className="portfolio-skeleton-row">
+            <td>
+              <Skeleton height="16px" width="50px" />
+            </td>
+            <td>
+              <Skeleton height="16px" width="80px" />
+            </td>
+            <td>
+              <Skeleton height="16px" width="60px" />
+            </td>
+            <td>
+              <Skeleton height="16px" width="80px" />
+            </td>
+            <td>
+              <Skeleton height="16px" width="90px" />
+            </td>
+            <td>
+              <Skeleton height="16px" width="90px" />
+            </td>
+            <td>
+              <Skeleton height="32px" width="80px" borderRadius="4px" />
+            </td>
+            <td>
+              <Skeleton height="16px" width="70px" />
+            </td>
+            <td>
+              <Skeleton height="16px" width="60px" />
+            </td>
+            <td>
+              <Skeleton height="32px" width="120px" borderRadius="4px" />
+            </td>
+          </tr>
+        ))}
+        {/* Totals row */}
+        <tr className="portfolio-skeleton-totals">
+          <td>
+            <Skeleton height="18px" width="70px" />
+          </td>
+          <td>
+            <Skeleton height="16px" width="20px" />
+          </td>
+          <td>
+            <Skeleton height="16px" width="20px" />
+          </td>
+          <td>
+            <Skeleton height="16px" width="20px" />
+          </td>
+          <td>
+            <Skeleton height="18px" width="100px" />
+          </td>
+          <td>
+            <Skeleton height="18px" width="100px" />
+          </td>
+          <td>
+            <Skeleton height="16px" width="20px" />
+          </td>
+          <td>
+            <Skeleton height="16px" width="20px" />
+          </td>
+          <td>
+            <Skeleton height="16px" width="20px" />
+          </td>
+          <td>
+            <Skeleton height="16px" width="20px" />
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+));
+
+PortfolioTableSkeleton.displayName = "PortfolioTableSkeleton";
+
 export default Skeleton;

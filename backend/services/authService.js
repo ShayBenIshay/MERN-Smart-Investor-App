@@ -6,15 +6,33 @@ const env = process.env.NODE_ENV || "development";
 const config = require("../config/config")[env];
 
 class AuthService {
+  // Helper function to convert duration string to milliseconds
+  durationToMs(duration) {
+    const units = {
+      s: 1000,
+      m: 60 * 1000,
+      h: 60 * 60 * 1000,
+      d: 24 * 60 * 60 * 1000,
+    };
+
+    const match = duration.match(/^(\d+)([smhd])$/);
+    if (!match) return 60 * 60 * 1000; // Default to 1 hour
+
+    const [, value, unit] = match;
+    return parseInt(value) * units[unit];
+  }
+
   // Generate access token (short-lived)
   generateAccessToken(userId) {
-    return jwt.sign({ userId }, config.jwtSecret, { expiresIn: "15m" });
+    return jwt.sign({ userId }, config.jwtSecret, {
+      expiresIn: config.jwtAccessTokenDuration,
+    });
   }
 
   // Generate refresh token (long-lived)
   generateRefreshToken(userId) {
     return jwt.sign({ userId, type: "refresh" }, config.jwtSecret, {
-      expiresIn: "7d",
+      expiresIn: config.jwtRefreshTokenDuration,
     });
   }
 
@@ -45,7 +63,9 @@ class AuthService {
     const refreshToken = this.generateRefreshToken(user._id);
 
     // Store refresh token
-    const refreshExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    const refreshExpiresAt = new Date(
+      Date.now() + this.durationToMs(config.jwtRefreshTokenDuration)
+    );
     user.addRefreshToken(refreshToken, refreshExpiresAt);
     await user.save();
 
@@ -54,14 +74,14 @@ class AuthService {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
-      maxAge: 15 * 60 * 1000, // 15 minutes
+      maxAge: this.durationToMs(config.jwtAccessTokenDuration),
     });
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      maxAge: this.durationToMs(config.jwtRefreshTokenDuration),
     });
 
     return {
@@ -89,7 +109,9 @@ class AuthService {
     const refreshToken = this.generateRefreshToken(user._id);
 
     // Store refresh token
-    const refreshExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    const refreshExpiresAt = new Date(
+      Date.now() + this.durationToMs(config.jwtRefreshTokenDuration)
+    );
     user.addRefreshToken(refreshToken, refreshExpiresAt);
     await user.save();
 
@@ -98,14 +120,14 @@ class AuthService {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
-      maxAge: 15 * 60 * 1000, // 15 minutes
+      maxAge: this.durationToMs(config.jwtAccessTokenDuration),
     });
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      maxAge: this.durationToMs(config.jwtRefreshTokenDuration),
     });
 
     return {
@@ -149,7 +171,7 @@ class AuthService {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "strict",
-        maxAge: 15 * 60 * 1000, // 15 minutes
+        maxAge: this.durationToMs(config.jwtAccessTokenDuration),
       });
 
       return {

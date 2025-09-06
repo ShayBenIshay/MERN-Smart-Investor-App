@@ -27,6 +27,8 @@ export const useAddTransaction = () => {
     onSuccess: () => {
       // Invalidate and refetch transactions
       queryClient.invalidateQueries(["transactions"]);
+      // Invalidate holdings to update portfolio
+      queryClient.invalidateQueries(["holdings"]);
       // Refresh user data to update cash amount
       refreshUser();
     },
@@ -80,6 +82,8 @@ export const useDeleteTransaction = () => {
     onSuccess: () => {
       // Invalidate and refetch
       queryClient.invalidateQueries(["transactions"]);
+      // Invalidate holdings to update portfolio
+      queryClient.invalidateQueries(["holdings"]);
       refreshUser();
     },
     onError: (error, variables, context) => {
@@ -90,6 +94,8 @@ export const useDeleteTransaction = () => {
     onSettled: () => {
       // Always refetch after error or success
       queryClient.invalidateQueries(["transactions"]);
+      // Invalidate holdings to update portfolio
+      queryClient.invalidateQueries(["holdings"]);
     },
   });
 };

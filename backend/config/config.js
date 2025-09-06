@@ -22,6 +22,9 @@ const envSchema = Joi.object({
     otherwise: Joi.string().default("dev_secret_key_change_in_production"),
   }),
   FRONTEND_URL: Joi.string().uri().default("http://localhost:3000"),
+  // JWT token durations
+  JWT_ACCESS_TOKEN_DURATION: Joi.string().default("1h"),
+  JWT_REFRESH_TOKEN_DURATION: Joi.string().default("7d"),
   // Alpaca API configuration
   ALPACA_API_KEY: Joi.string().required(),
   ALPACA_SECRET_KEY: Joi.string().required(),
@@ -38,6 +41,8 @@ module.exports = {
     port: env.PORT,
     mongoUri: env.MONGODB_URI,
     jwtSecret: env.JWT_SECRET,
+    jwtAccessTokenDuration: env.JWT_ACCESS_TOKEN_DURATION,
+    jwtRefreshTokenDuration: env.JWT_REFRESH_TOKEN_DURATION,
     frontendUrl: env.FRONTEND_URL,
     corsOrigin: env.FRONTEND_URL,
     alpaca: {
@@ -49,6 +54,8 @@ module.exports = {
     port: env.PORT,
     mongoUri: env.MONGODB_URI,
     jwtSecret: env.JWT_SECRET,
+    jwtAccessTokenDuration: env.JWT_ACCESS_TOKEN_DURATION,
+    jwtRefreshTokenDuration: env.JWT_REFRESH_TOKEN_DURATION,
     frontendUrl: env.FRONTEND_URL,
     corsOrigin: env.FRONTEND_URL || false,
     alpaca: {

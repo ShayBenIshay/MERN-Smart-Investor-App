@@ -369,57 +369,57 @@ router.get(
 );
 
 // Update the test route
-router.get(
-  "/prices/test/:symbol",
-  auth,
-  asyncHandler(async (req, res) => {
-    const { symbol } = req.params;
-    const alpacaPrices = require("../services/alpacaPrices");
-    const price = alpacaPrices.getPrice(symbol.toUpperCase());
-    const allPrices = alpacaPrices.getAllPrices();
-    const status = alpacaPrices.getConnectionStatus();
+// router.get(
+//   "/prices/test/:symbol",
+//   auth,
+//   asyncHandler(async (req, res) => {
+//     const { symbol } = req.params;
+//     const alpacaPrices = require("../services/alpacaPrices");
+//     const price = alpacaPrices.getPrice(symbol.toUpperCase());
+//     const allPrices = alpacaPrices.getAllPrices();
+//     const status = alpacaPrices.getConnectionStatus();
 
-    res.json({
-      success: true,
-      data: {
-        symbol: symbol.toUpperCase(),
-        price,
-        allPrices,
-        status,
-      },
-    });
-  })
-);
+//     res.json({
+//       success: true,
+//       data: {
+//         symbol: symbol.toUpperCase(),
+//         price,
+//         allPrices,
+//         status,
+//       },
+//     });
+//   })
+// );
 
 // Add this test route to check credentials
-router.get(
-  "/prices/debug",
-  auth,
-  asyncHandler(async (req, res) => {
-    const config = require("../config/config");
-    const currentConfig = config[process.env.NODE_ENV || "development"];
+// router.get(
+//   "/prices/debug",
+//   auth,
+//   asyncHandler(async (req, res) => {
+//     const config = require("../config/config");
+//     const currentConfig = config[process.env.NODE_ENV || "development"];
 
-    res.json({
-      success: true,
-      data: {
-        hasApiKey: !!currentConfig.alpaca.apiKey,
-        apiKeyPreview: currentConfig.alpaca.apiKey
-          ? currentConfig.alpaca.apiKey.substring(0, 8) + "..."
-          : "No API key",
-        hasSecretKey: !!currentConfig.alpaca.secretKey,
-        secretKeyPreview: currentConfig.alpaca.secretKey
-          ? currentConfig.alpaca.secretKey.substring(0, 8) + "..."
-          : "No secret key",
-        environment: process.env.NODE_ENV || "development",
-      },
-    });
-  })
-);
+//     res.json({
+//       success: true,
+//       data: {
+//         hasApiKey: !!currentConfig.alpaca.apiKey,
+//         apiKeyPreview: currentConfig.alpaca.apiKey
+//           ? currentConfig.alpaca.apiKey.substring(0, 8) + "..."
+//           : "No API key",
+//         hasSecretKey: !!currentConfig.alpaca.secretKey,
+//         secretKeyPreview: currentConfig.alpaca.secretKey
+//           ? currentConfig.alpaca.secretKey.substring(0, 8) + "..."
+//           : "No secret key",
+//         environment: process.env.NODE_ENV || "development",
+//       },
+//     });
+//   })
+// );
 
 // Add this new endpoint
 router.post(
   "/prices/subscribe-portfolio",
-  // auth,
+  auth,
   asyncHandler(async (req, res) => {
     const { symbols } = req.body;
     const alpacaPrices = require("../services/alpacaPrices");

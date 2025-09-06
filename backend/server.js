@@ -44,12 +44,31 @@ app.use(cookieParser());
 // CORS
 app.use(
   cors({
-    origin: config.corsOrigin || "http://localhost:3000",
+    origin:
+      process.env.NODE_ENV === "production"
+        ? process.env.FRONTEND_PROD_URL
+        : process.env.FRONTEND_DEV_URL,
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+    optionsSuccessStatus: 200,
   })
 );
+
+// Handle preflight requests explicitly
+app.options("*", (req, res) => {
+  res.header(
+    "Access-Control-Allow-Origin",
+    config.corsOrigin || process.env.FRONTEND_DEV_URL
+  );
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Authorization, X-Requested-With"
+  );
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.sendStatus(200);
+});
 
 // Routes
 app.use("/api/auth", authRoutes);

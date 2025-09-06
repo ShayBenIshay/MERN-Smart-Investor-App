@@ -1,8 +1,89 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { usePortfolio } from "../hooks/usePortfolio";
 import { PortfolioTableSkeleton } from "../components/Skeleton";
 import { holdingsAPI } from "../services/api";
 import "./Portfolio.css";
+
+// Memoized Portfolio Row Component - moved outside to avoid Rules of Hooks violation
+const PortfolioRow = React.memo(
+  ({
+    holding,
+    editedHoldings,
+    handleInputChange,
+    formatCurrency,
+    formatPercent,
+    collapsibleColumns,
+    isColumnVisible,
+  }) => (
+    <tr key={holding.symbol} className="portfolio-row">
+      <td className="symbol">{holding.symbol}</td>
+      <td>{formatCurrency(holding.avgBuyPrice)}</td>
+      {collapsibleColumns.map((columnKey) =>
+        isColumnVisible(columnKey) ? (
+          <td key={columnKey}>
+            {columnKey === "position" && holding.position.toLocaleString()}
+            {columnKey === "lastPrice" && formatCurrency(holding.lastPrice)}
+            {columnKey === "totalSpent" && formatCurrency(holding.totalSpent)}
+            {columnKey === "totalValue" && formatCurrency(holding.totalValue)}
+            {columnKey === "stopLoss" && (
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={editedHoldings[holding.symbol]?.stopLoss || 0}
+                onChange={(e) =>
+                  handleInputChange(holding.symbol, "stopLoss", e.target.value)
+                }
+                className="editable-input currency-input"
+              />
+            )}
+            {columnKey === "riskDollar" && (
+              <span className={holding.riskDollar > 0 ? "negative" : ""}>
+                {holding.riskDollar > 0
+                  ? formatCurrency(holding.riskDollar)
+                  : "-"}
+              </span>
+            )}
+            {columnKey === "riskPercent" && (
+              <span className={holding.riskPercent > 0 ? "negative" : ""}>
+                {holding.riskPercent > 0
+                  ? formatPercent(holding.riskPercent)
+                  : "-"}
+              </span>
+            )}
+            {columnKey === "entryReason" && (
+              <input
+                type="text"
+                value={editedHoldings[holding.symbol]?.entryReason || ""}
+                onChange={(e) =>
+                  handleInputChange(
+                    holding.symbol,
+                    "entryReason",
+                    e.target.value
+                  )
+                }
+                className="editable-input text-input"
+              />
+            )}
+          </td>
+        ) : (
+          <td key={columnKey} className="collapsed-cell">
+            <div className="collapsed-data">•</div>
+          </td>
+        )
+      )}
+      <td className={holding.unrealizedPL >= 0 ? "positive" : "negative"}>
+        {formatCurrency(holding.unrealizedPL)}
+      </td>
+      <td
+        className={holding.unrealizedPLPercent >= 0 ? "positive" : "negative"}
+      >
+        {formatPercent(holding.unrealizedPLPercent)}
+      </td>
+      <td>{formatPercent(holding.totalPercent)}</td>
+    </tr>
+  )
+);
 
 function Portfolio() {
   const {
@@ -40,8 +121,8 @@ function Portfolio() {
     }
   }, [holdings]);
 
-  // Handle input changes
-  const handleInputChange = (symbol, field, value) => {
+  // Handle input changes - memoized to prevent re-renders
+  const handleInputChange = useCallback((symbol, field, value) => {
     setEditedHoldings((prev) => ({
       ...prev,
       [symbol]: {
@@ -50,10 +131,10 @@ function Portfolio() {
       },
     }));
     setHasChanges(true);
-  };
+  }, []);
 
-  // Handle update
-  const handleUpdate = async () => {
+  // Handle update - memoized to prevent re-renders
+  const handleUpdate = useCallback(async () => {
     if (isUpdating) return;
 
     setIsUpdating(true);
@@ -72,10 +153,10 @@ function Portfolio() {
     } finally {
       setIsUpdating(false);
     }
-  };
+  }, [editedHoldings, isUpdating]);
 
-  // Toggle collapse/expand for a column
-  const toggleColumnCollapse = (columnKey) => {
+  // Toggle collapse/expand for a column - memoized
+  const toggleColumnCollapse = useCallback((columnKey) => {
     setCollapsedColumns((prev) => {
       const newSet = new Set(prev);
       if (newSet.has(columnKey)) {
@@ -85,7 +166,67 @@ function Portfolio() {
       }
       return newSet;
     });
-  };
+  }, []);
+
+  // Memoized utility functions to prevent recreation on every render
+  const formatCurrency = useCallback(
+    (value) =>
+      `$${value.toLocaleString("en-US", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      })}`,
+    []
+  );
+
+  const formatPercent = useCallback((value) => `${value.toFixed(2)}%`, []);
+
+  // Memoized collapsible columns configuration
+  const collapsibleColumns = useMemo(
+    () => [
+      "position",
+      "lastPrice",
+      "totalSpent",
+      "totalValue",
+      "stopLoss",
+      "riskDollar",
+      "riskPercent",
+      "entryReason",
+    ],
+    []
+  );
+
+  // Helper function to check if column is visible - memoized
+  const isColumnVisible = useCallback(
+    (columnKey) => !collapsedColumns.has(columnKey),
+    [collapsedColumns]
+  );
+
+  // Get abbreviated column titles for collapsed state - memoized
+  const getColumnAbbreviation = useCallback((columnKey) => {
+    const abbreviations = {
+      avgBuyPrice: "Avg",
+      position: "Pos",
+      lastPrice: "Last",
+      totalSpent: "Spent",
+      totalValue: "Value",
+      stopLoss: "Stop",
+      riskDollar: "Risk$",
+      riskPercent: "Risk%",
+      entryReason: "Note",
+    };
+    return abbreviations[columnKey] || columnKey.slice(0, 3);
+  }, []);
+
+  // Toggle all columns collapse/expand - memoized
+  const toggleAllColumns = useCallback(() => {
+    if (collapsedColumns.size === 0) {
+      // Collapse all
+      setCollapsedColumns(new Set(collapsibleColumns));
+    } else {
+      // Expand all
+      setCollapsedColumns(new Set());
+    }
+  }, [collapsedColumns.size, collapsibleColumns]);
 
   if (isLoading) {
     return (
@@ -108,55 +249,6 @@ function Portfolio() {
       </div>
     );
   }
-
-  const formatCurrency = (value) =>
-    `$${value.toLocaleString("en-US", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })}`;
-  const formatPercent = (value) => `${value.toFixed(2)}%`;
-
-  // Define collapsible columns
-  const collapsibleColumns = [
-    "position",
-    "lastPrice",
-    "totalSpent",
-    "totalValue",
-    "stopLoss",
-    "riskDollar",
-    "riskPercent",
-    "entryReason",
-  ];
-
-  // Helper function to check if column is visible
-  const isColumnVisible = (columnKey) => !collapsedColumns.has(columnKey);
-
-  // Get abbreviated column titles for collapsed state
-  const getColumnAbbreviation = (columnKey) => {
-    const abbreviations = {
-      avgBuyPrice: "Avg",
-      position: "Pos",
-      lastPrice: "Last",
-      totalSpent: "Spent",
-      totalValue: "Value",
-      stopLoss: "Stop",
-      riskDollar: "Risk$",
-      riskPercent: "Risk%",
-      entryReason: "Note",
-    };
-    return abbreviations[columnKey] || columnKey.slice(0, 3);
-  };
-
-  // Toggle all columns collapse/expand
-  const toggleAllColumns = () => {
-    if (collapsedColumns.size === 0) {
-      // Collapse all
-      setCollapsedColumns(new Set(collapsibleColumns));
-    } else {
-      // Expand all
-      setCollapsedColumns(new Set());
-    }
-  };
 
   return (
     <div className="page">
@@ -224,97 +316,16 @@ function Portfolio() {
             </thead>
             <tbody>
               {holdings.map((holding) => (
-                <tr key={holding.symbol} className="portfolio-row">
-                  <td className="symbol">{holding.symbol}</td>
-                  <td>{formatCurrency(holding.avgBuyPrice)}</td>
-                  {collapsibleColumns.map((columnKey) =>
-                    isColumnVisible(columnKey) ? (
-                      <td key={columnKey}>
-                        {columnKey === "position" &&
-                          holding.position.toLocaleString()}
-                        {columnKey === "lastPrice" &&
-                          formatCurrency(holding.lastPrice)}
-                        {columnKey === "totalSpent" &&
-                          formatCurrency(holding.totalSpent)}
-                        {columnKey === "totalValue" &&
-                          formatCurrency(holding.totalValue)}
-                        {columnKey === "stopLoss" && (
-                          <input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            value={
-                              editedHoldings[holding.symbol]?.stopLoss || 0
-                            }
-                            onChange={(e) =>
-                              handleInputChange(
-                                holding.symbol,
-                                "stopLoss",
-                                e.target.value
-                              )
-                            }
-                            className="editable-input currency-input"
-                          />
-                        )}
-                        {columnKey === "riskDollar" && (
-                          <span
-                            className={holding.riskDollar > 0 ? "negative" : ""}
-                          >
-                            {holding.riskDollar > 0
-                              ? formatCurrency(holding.riskDollar)
-                              : "-"}
-                          </span>
-                        )}
-                        {columnKey === "riskPercent" && (
-                          <span
-                            className={
-                              holding.riskPercent > 0 ? "negative" : ""
-                            }
-                          >
-                            {holding.riskPercent > 0
-                              ? formatPercent(holding.riskPercent)
-                              : "-"}
-                          </span>
-                        )}
-                        {columnKey === "entryReason" && (
-                          <input
-                            type="text"
-                            value={
-                              editedHoldings[holding.symbol]?.entryReason || ""
-                            }
-                            onChange={(e) =>
-                              handleInputChange(
-                                holding.symbol,
-                                "entryReason",
-                                e.target.value
-                              )
-                            }
-                            className="editable-input text-input"
-                          />
-                        )}
-                      </td>
-                    ) : (
-                      <td key={columnKey} className="collapsed-cell">
-                        <div className="collapsed-data">•</div>
-                      </td>
-                    )
-                  )}
-                  <td
-                    className={
-                      holding.unrealizedPL >= 0 ? "positive" : "negative"
-                    }
-                  >
-                    {formatCurrency(holding.unrealizedPL)}
-                  </td>
-                  <td
-                    className={
-                      holding.unrealizedPLPercent >= 0 ? "positive" : "negative"
-                    }
-                  >
-                    {formatPercent(holding.unrealizedPLPercent)}
-                  </td>
-                  <td>{formatPercent(holding.totalPercent)}</td>
-                </tr>
+                <PortfolioRow
+                  key={holding.symbol}
+                  holding={holding}
+                  editedHoldings={editedHoldings}
+                  handleInputChange={handleInputChange}
+                  formatCurrency={formatCurrency}
+                  formatPercent={formatPercent}
+                  collapsibleColumns={collapsibleColumns}
+                  isColumnVisible={isColumnVisible}
+                />
               ))}
               {/* Totals Row */}
               <tr className="totals-row">

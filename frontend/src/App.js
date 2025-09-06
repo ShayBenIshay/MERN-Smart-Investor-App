@@ -28,22 +28,20 @@ const TransactionsHistory = lazy(() => import("./pages/TransactionsHistory"));
 const PortfolioRedirect = () => {
   const { user, loading } = useAuth();
 
-  console.log("PortfolioRedirect - user:", user, "loading:", loading);
+  if (loading) return <div>Loading user data...</div>;
+  if (!user?._id) return <div>User not found</div>;
 
-  if (loading) {
-    return <div>Loading user data...</div>;
-  }
-
-  if (!user) {
-    return <div>Please log in to view your portfolio</div>;
-  }
-
-  if (!user._id) {
-    return <div>User ID not found. Please try logging in again.</div>;
-  }
-
-  console.log("PortfolioRedirect - redirecting to:", `/portfolio/${user._id}`);
   return <Navigate to={`/portfolio/${user._id}`} replace />;
+};
+
+// Component to redirect from /transactions to /transactions/:userId
+const TransactionsRedirect = () => {
+  const { user, loading } = useAuth();
+
+  if (loading) return <div>Loading user data...</div>;
+  if (!user?._id) return <div>User not found</div>;
+
+  return <Navigate to={`/transactions/${user._id}`} replace />;
 };
 
 const NavBar = React.memo(() => {
@@ -67,7 +65,7 @@ const NavBar = React.memo(() => {
             </Link>
           </li>
           <li className="nav-item">
-            <Link to="/transactions" className="nav-link">
+            <Link to={`/transactions/${user?._id}`} className="nav-link">
               Transactions
             </Link>
           </li>
@@ -104,7 +102,14 @@ function AppContent() {
                 <Route path="/" element={<Home />} />
                 <Route path="/portfolio" element={<PortfolioRedirect />} />
                 <Route path="/portfolio/:userId" element={<Portfolio />} />
-                <Route path="/transactions" element={<TransactionsHistory />} />
+                <Route
+                  path="/transactions"
+                  element={<TransactionsRedirect />}
+                />
+                <Route
+                  path="/transactions/:userId"
+                  element={<TransactionsHistory />}
+                />
                 <Route path="/profile" element={<Profile />} />
               </Routes>
             </Suspense>

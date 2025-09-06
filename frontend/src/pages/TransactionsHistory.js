@@ -5,7 +5,7 @@ import React, {
   useRef,
   useCallback,
 } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useParams } from "react-router-dom";
 import {
   useTransactions,
   useDeleteTransaction,
@@ -17,6 +17,7 @@ import "./TransactionsHistory.css";
 
 function TransactionsHistory() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { userId } = useParams();
 
   // Initialize from URL query params so filters persist across refresh
   const initialFilters = useMemo(() => {
@@ -55,7 +56,7 @@ function TransactionsHistory() {
     isLoading: loading,
     error,
     refetch: fetchTransactions,
-  } = useTransactions(filters, currentPage, pageSize);
+  } = useTransactions(userId, filters, currentPage, pageSize);
 
   // Extract transactions and pagination from response
   const transactions = transactionsResponse?.data || [];

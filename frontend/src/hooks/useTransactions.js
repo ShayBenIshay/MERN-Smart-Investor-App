@@ -5,13 +5,14 @@ import { useAuth } from "../context/AuthContext";
 /**
  * Custom hook for fetching transactions with React Query
  */
-export const useTransactions = (filters = {}, page = 1, limit = 20) => {
+export const useTransactions = (userId, filters = {}, page = 1, limit = 20) => {
   return useQuery({
-    queryKey: ["transactions", filters, page, limit],
+    queryKey: ["transactions", userId, filters, page, limit],
     queryFn: () =>
       transactionsAPI.getAll(filters, page, limit).then((res) => res.data),
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
+    enabled: !!userId, // Only fetch when userId is available
   });
 };
 

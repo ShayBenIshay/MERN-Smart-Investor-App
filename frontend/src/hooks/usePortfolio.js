@@ -170,7 +170,7 @@ export const usePortfolio = (userId) => {
     isLoading: transactionsLoading,
     error: transactionsError,
   } = useQuery({
-    queryKey: ["transactions", "all"],
+    queryKey: ["transactions", "all", userId],
     queryFn: () =>
       transactionsAPI.getAllWithoutPagination().then((res) => {
         console.log(
@@ -182,7 +182,7 @@ export const usePortfolio = (userId) => {
       }),
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
-    enabled: shouldFetchTransactions, // Only fetch when needed
+    enabled: shouldFetchTransactions && !!userId, // Only fetch when needed and userId is available
   });
 
   // Sync holdings with calculated portfolio data

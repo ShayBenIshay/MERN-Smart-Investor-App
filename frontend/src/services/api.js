@@ -72,6 +72,8 @@ export const transactionsAPI = {
     }),
   getAllWithoutPagination: () => api.get("/transactions/all"),
   create: (data) => api.post("/transactions", data),
+  createBatch: (transactions) =>
+    api.post("/transactions/batch", { transactions }),
   get: (id) => api.get(`/transactions/${id}`),
   update: (id, data) => api.put(`/transactions/${id}`, data),
   delete: (id) => api.delete(`/transactions/${id}`),
@@ -80,12 +82,23 @@ export const transactionsAPI = {
     api.post("/transactions/prices/subscribe-portfolio", { symbols }),
 };
 
-// Holdings API
+// Holdings API (legacy - kept for backward compatibility)
 export const holdingsAPI = {
   getAll: () => api.get("/holdings"),
   sync: (holdings) => api.post("/holdings/sync", { holdings }),
   invalidate: (tickers) => api.post("/holdings/invalidate", { tickers }),
   update: (ticker, data) => api.put(`/holdings/${ticker}`, data),
+};
+
+// Portfolio API (new user-specific endpoints)
+export const portfolioAPI = {
+  getPortfolio: (userId) => api.get(`/portfolio/${userId}`),
+  syncPortfolio: (userId, holdings) =>
+    api.post(`/portfolio/${userId}/sync`, { holdings }),
+  invalidatePortfolio: (userId, tickers) =>
+    api.post(`/portfolio/${userId}/invalidate`, { tickers }),
+  updateHolding: (userId, ticker, data) =>
+    api.put(`/portfolio/${userId}/holdings/${ticker}`, data),
 };
 
 export default api;

@@ -9,7 +9,12 @@ const {
   invalidateTransactionCache,
   invalidateUserCache,
 } = require("../middleware/cache");
-const { transactionValidation } = require("../middleware/joiValidation");
+const cacheService = require("../services/cacheService");
+const {
+  transactionValidation,
+  batchTransactionValidation,
+  handleValidationErrors,
+} = require("../middleware/validation");
 const mongoose = require("mongoose");
 
 // Helper function to invalidate holdings for specific tickers
@@ -52,7 +57,8 @@ router.get(
     // Build filter object
     const filter = { userId: req.user._id };
 
-    if (ticker) filter.ticker = ticker.toUpperCase();
+    if (ticker)
+      filter.ticker = { $regex: `^${ticker.toUpperCase()}`, $options: "i" };
     if (operation) filter.operation = operation;
     if (startDate || endDate) {
       filter.executedAt = {};
@@ -439,6 +445,88 @@ router.post(
       message: `Subscribed to ${symbols.length} symbols`,
       subscribedSymbols: Array.from(alpacaPrices.subscribedSymbols),
     });
+  })
+);
+
+// Create multiple transactions in batch
+router.post(
+  "/batch",
+  auth,
+  batchTransactionValidation,
+  handleValidationErrors,
+  asyncHandler(async (req, res) => {
+    const { transactions } = req.body;
+    const userId = req.user._id;
+
+    // Validation is handled by middleware
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      // Prepare transactions with userId (remove frontend id field)
+      const transactionsToCreate = transactions.map((transaction) => {
+        const { id, ...transactionData } = transaction; // Remove the frontend id
+        return {
+          ...transactionData,
+          userId,
+          ticker: transaction.ticker.toUpperCase(),
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+      });
+
+      // Create all transactions
+      const createdTransactions = await Transaction.insertMany(
+        transactionsToCreate,
+        { session }
+      );
+
+      // Update user's cash balance
+      let totalCashChange = 0;
+      const tickers = new Set();
+
+      for (const transaction of createdTransactions) {
+        const cashChange =
+          transaction.operation === "buy"
+            ? -(transaction.price * transaction.papers)
+            : transaction.price * transaction.papers;
+        totalCashChange += cashChange;
+        tickers.add(transaction.ticker);
+      }
+
+      await User.findByIdAndUpdate(
+        userId,
+        { $inc: { cash: totalCashChange } },
+        { session }
+      );
+
+      // Invalidate holdings for affected tickers
+      await invalidateHoldingsForTickers(userId, Array.from(tickers));
+
+      // Invalidate caches
+      cacheService.invalidateTransactionsCache(userId);
+      cacheService.invalidateUserCache(userId);
+
+      await session.commitTransaction();
+
+      res.status(201).json({
+        success: true,
+        message: `Successfully created ${createdTransactions.length} transactions`,
+        data: createdTransactions,
+        cashChange: totalCashChange,
+      });
+    } catch (error) {
+      await session.abortTransaction();
+      console.error("Batch transaction error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to create transactions",
+        message: error.message,
+      });
+    } finally {
+      session.endSession();
+    }
   })
 );
 

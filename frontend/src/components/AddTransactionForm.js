@@ -1,281 +1,217 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useCallback } from "react";
 import { useForm } from "react-hook-form";
-import { yupResolver } from "@hookform/resolvers/yup";
-import * as yup from "yup";
 import toast from "react-hot-toast";
-import { useAddTransaction } from "../hooks/useTransactions";
-import { transactionsAPI } from "../services/api";
+import { useBatchTransactions } from "../hooks/useTransactions";
+import TransactionRow from "./TransactionRow";
 import "./AddTransactionForm.css";
 
-// Custom hook for debounced price fetching
-const useDebouncedPrice = (symbol, delay = 500) => {
-  const [price, setPrice] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const timeoutRef = useRef(null);
-
-  useEffect(() => {
-    // Clear existing timeout
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-
-    // Reset state if symbol is too short
-    if (!symbol || symbol.length < 2) {
-      setPrice(null);
-      setLoading(false);
-      setError(null);
-      return;
-    }
-
-    // Set loading state
-    setLoading(true);
-    setError(null);
-
-    // Create new timeout
-    timeoutRef.current = setTimeout(async () => {
-      try {
-        const response = await transactionsAPI.getPrice(symbol.toUpperCase());
-        console.log("API Response:", response.data); // Debug log
-        setPrice(response.data.data.price); // Fixed: access data.data.price
-        setError(null);
-      } catch (err) {
-        console.error("Price fetch error:", err); // Debug log
-        setPrice(null);
-        setError("Symbol not found");
-      } finally {
-        setLoading(false);
-      }
-    }, delay);
-
-    // Cleanup function
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
-  }, [symbol, delay]);
-
-  return { price, loading, error };
-};
-
-// Validation schema
-const transactionSchema = yup.object({
-  operation: yup.string().required("Operation is required"),
-  ticker: yup
-    .string()
-    .required("Stock ticker is required")
-    .matches(/^[A-Z]{1,5}$/, "Ticker must be 1-5 uppercase letters"),
-  price: yup
-    .number()
-    .typeError("Price must be a number")
-    .positive("Price must be positive")
-    .required("Price is required"),
-  papers: yup
-    .number()
-    .typeError("Number of shares must be a number")
-    .integer("Number of shares must be a whole number")
-    .positive("Number of shares must be positive")
-    .required("Number of shares is required"),
-  executedAt: yup
-    .date()
-    .typeError("Please enter a valid date")
-    .max(new Date(), "Date cannot be in the future")
-    .required("Execution date is required"),
-});
-
 const AddTransactionForm = React.memo(({ onTransactionAdded }) => {
-  const addTransactionMutation = useAddTransaction();
-  const [tickerValue, setTickerValue] = useState("");
-  const { price, loading, error } = useDebouncedPrice(tickerValue);
-
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-    reset,
-    setError,
-    setValue,
-    watch,
-  } = useForm({
-    resolver: yupResolver(transactionSchema),
-    defaultValues: {
+  const batchTransactionMutation = useBatchTransactions();
+  const [transactionRows, setTransactionRows] = useState([
+    {
+      id: 1,
       operation: "buy",
       ticker: "",
       price: "",
       papers: "",
-      executedAt: new Date().toISOString().split("T")[0], // Today's date in YYYY-MM-DD format
+      executedAt: new Date().toISOString().split("T")[0],
     },
-  });
+  ]);
 
-  // Watch the ticker field for changes
-  const watchedTicker = watch("ticker");
+  const {
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    reset,
+    setError,
+  } = useForm();
 
-  // Update local state when form ticker changes
-  useEffect(() => {
-    setTickerValue(watchedTicker || "");
-  }, [watchedTicker]);
+  // Add new transaction row
+  const addTransactionRow = useCallback(() => {
+    const newRow = {
+      id: Date.now(),
+      operation: "buy",
+      ticker: "",
+      price: "",
+      papers: "",
+      executedAt: new Date().toISOString().split("T")[0],
+    };
+    setTransactionRows((prevRows) => [...prevRows, newRow]);
+  }, []);
 
-  // Auto-fill price when real-time price is available
-  useEffect(() => {
-    if (price && !watchedTicker) {
-      setValue("price", price.toFixed(2));
-    }
-  }, [price, setValue, watchedTicker]);
+  // Remove transaction row
+  const removeTransactionRow = useCallback((id) => {
+    setTransactionRows((prevRows) => {
+      if (prevRows.length > 1) {
+        return prevRows.filter((row) => row.id !== id);
+      }
+      return prevRows;
+    });
+  }, []);
+
+  // Update transaction row
+  const updateTransactionRow = useCallback((id, field, value) => {
+    setTransactionRows((prevRows) =>
+      prevRows.map((row) => (row.id === id ? { ...row, [field]: value } : row))
+    );
+  }, []);
+
+  // Validate transaction rows
+  const validateTransactions = () => {
+    const errors = [];
+
+    transactionRows.forEach((row, index) => {
+      if (!row.operation) {
+        errors.push(`Transaction ${index + 1}: Operation is required`);
+      }
+      if (!row.ticker || !/^[A-Z]{1,5}$/.test(row.ticker)) {
+        errors.push(`Transaction ${index + 1}: Valid ticker is required`);
+      }
+      if (!row.price || isNaN(row.price) || parseFloat(row.price) <= 0) {
+        errors.push(`Transaction ${index + 1}: Valid price is required`);
+      }
+      if (!row.papers || isNaN(row.papers) || parseInt(row.papers) <= 0) {
+        errors.push(
+          `Transaction ${index + 1}: Valid number of shares is required`
+        );
+      }
+      if (!row.executedAt) {
+        errors.push(`Transaction ${index + 1}: Execution date is required`);
+      }
+    });
+
+    return errors;
+  };
 
   const onSubmit = async (data) => {
     try {
-      // Combine selected date with current time (hours, minutes, seconds)
-      const selectedDate = new Date(data.executedAt);
-      const currentTime = new Date();
+      // Validate transactions
+      const validationErrors = validateTransactions();
+      if (validationErrors.length > 0) {
+        setError("root", {
+          type: "validation",
+          message: validationErrors.join(". "),
+        });
+        return;
+      }
 
-      // Create new date with selected date but current time
-      const executedAtWithTime = new Date(
-        selectedDate.getFullYear(),
-        selectedDate.getMonth(),
-        selectedDate.getDate(),
-        currentTime.getHours(),
-        currentTime.getMinutes(),
-        currentTime.getSeconds(),
-        currentTime.getMilliseconds()
-      );
+      // Process each transaction from transactionRows state
+      const processedTransactions = transactionRows.map((transaction) => {
+        const selectedDate = new Date(transaction.executedAt);
+        const currentTime = new Date();
 
-      const transactionData = {
-        ...data,
-        ticker: data.ticker.toUpperCase(),
-        price: parseFloat(data.price),
-        papers: parseInt(data.papers),
-        executedAt: executedAtWithTime.toISOString(),
-      };
+        // Create new date with selected date but current time
+        const executedAtWithTime = new Date(
+          selectedDate.getFullYear(),
+          selectedDate.getMonth(),
+          selectedDate.getDate(),
+          currentTime.getHours(),
+          currentTime.getMinutes(),
+          currentTime.getSeconds(),
+          currentTime.getMilliseconds()
+        );
 
-      const response = await addTransactionMutation.mutateAsync(
-        transactionData
+        return {
+          ...transaction,
+          ticker: transaction.ticker.toUpperCase(),
+          price: parseFloat(transaction.price),
+          papers: parseInt(transaction.papers),
+          executedAt: executedAtWithTime.toISOString(),
+        };
+      });
+
+      const response = await batchTransactionMutation.mutateAsync(
+        processedTransactions
       );
 
       // Show success notification
-      toast.success("Transaction added successfully!");
+      toast.success(
+        `Successfully added ${processedTransactions.length} transaction${
+          processedTransactions.length > 1 ? "s" : ""
+        }!`
+      );
 
       // Reset form on success
+      setTransactionRows([
+        {
+          id: Date.now(),
+          operation: "buy",
+          ticker: "",
+          price: "",
+          papers: "",
+          executedAt: new Date().toISOString().split("T")[0],
+        },
+      ]);
       reset();
-      setTickerValue("");
 
       // Notify parent component if callback provided
-      if (onTransactionAdded) {
-        onTransactionAdded(response.data.data);
+      if (onTransactionAdded && response.data.data) {
+        response.data.data.forEach((transaction) => {
+          onTransactionAdded(transaction);
+        });
       }
     } catch (err) {
       setError("root", {
         type: "server",
         message:
           err.response?.data?.error ||
-          "Failed to add transaction. Please try again.",
+          "Failed to add transactions. Please try again.",
       });
     }
   };
 
   return (
     <div className="add-transaction-form">
-      <h3>Add New Transaction</h3>
+      <div className="form-header">
+        <h3>Add Transactions</h3>
+      </div>
 
       {errors.root && (
         <div className="message error-message">{errors.root.message}</div>
       )}
 
       <form onSubmit={handleSubmit(onSubmit)}>
-        <div className="form-row">
-          <div className="form-group">
-            <label htmlFor="operation">Operation *</label>
-            <select id="operation" {...register("operation")}>
-              <option value="buy">Buy</option>
-              <option value="sell">Sell</option>
-            </select>
-            {errors.operation && (
-              <span className="error-text">{errors.operation.message}</span>
-            )}
+        <div className="transactions-table">
+          <div className="table-header">
+            <div className="header-cell">#</div>
+            <div className="header-cell">Operation</div>
+            <div className="header-cell">Ticker</div>
+            <div className="header-cell">Shares</div>
+            <div className="header-cell">Price/Share</div>
+            <div className="header-cell">Total Value</div>
+            <div className="header-cell">Date</div>
+            <div className="header-cell">Action</div>
           </div>
 
-          <div className="form-group">
-            <label htmlFor="ticker">Stock Ticker *</label>
-            <div className="ticker-input-container">
-              <input
-                type="text"
-                id="ticker"
-                {...register("ticker")}
-                placeholder="e.g., AAPL, TSLA"
-                style={{ textTransform: "uppercase" }}
+          <div className="transactions-container">
+            {transactionRows.map((row, index) => (
+              <TransactionRow
+                key={row.id}
+                index={index}
+                row={row}
+                onUpdate={updateTransactionRow}
+                onRemove={removeTransactionRow}
+                canRemove={transactionRows.length > 1}
+                isLastRow={index === transactionRows.length - 1}
+                onAddRow={addTransactionRow}
+                canAddRow={transactionRows.length < 10}
               />
-              {/* Real-time price display */}
-              <div className="price-display">
-                {loading && (
-                  <span className="price-loading">
-                    <span className="spinner"></span>
-                    Loading price...
-                  </span>
-                )}
-                {price && !loading && (
-                  <span className="current-price">
-                    Current: ${price.toFixed(2)}
-                  </span>
-                )}
-                {error && !loading && (
-                  <span className="price-error">{error}</span>
-                )}
-              </div>
-            </div>
-            {errors.ticker && (
-              <span className="error-text">{errors.ticker.message}</span>
-            )}
+            ))}
           </div>
         </div>
 
-        <div className="form-row">
-          <div className="form-group">
-            <label htmlFor="price">Price per Share *</label>
-            <input
-              type="number"
-              id="price"
-              {...register("price")}
-              placeholder={price ? price.toFixed(2) : "0.00"}
-              step="0.01"
-              min="0.01"
-            />
-            {errors.price && (
-              <span className="error-text">{errors.price.message}</span>
-            )}
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="papers">Number of Shares *</label>
-            <input
-              type="number"
-              id="papers"
-              {...register("papers")}
-              placeholder="1"
-              min="1"
-            />
-            {errors.papers && (
-              <span className="error-text">{errors.papers.message}</span>
-            )}
-          </div>
+        <div className="form-actions">
+          <button
+            type="submit"
+            disabled={isSubmitting || batchTransactionMutation.isPending}
+            className="submit-button"
+          >
+            {isSubmitting || batchTransactionMutation.isPending
+              ? "Adding Transactions..."
+              : `Add ${transactionRows.length} Transaction${
+                  transactionRows.length > 1 ? "s" : ""
+                }`}
+          </button>
         </div>
-
-        <div className="form-group">
-          <label htmlFor="executedAt">Execution Date *</label>
-          <input type="date" id="executedAt" {...register("executedAt")} />
-          {errors.executedAt && (
-            <span className="error-text">{errors.executedAt.message}</span>
-          )}
-        </div>
-
-        <button
-          type="submit"
-          disabled={isSubmitting || addTransactionMutation.isPending}
-          className="submit-button"
-        >
-          {isSubmitting || addTransactionMutation.isPending
-            ? "Adding Transaction..."
-            : "Add Transaction"}
-        </button>
       </form>
     </div>
   );

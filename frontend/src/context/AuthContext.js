@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { authAPI } from "../services/api";
+import { queryClient } from "../config/queryClient";
 
 const AuthContext = createContext();
 
@@ -40,6 +41,9 @@ export const AuthProvider = ({ children }) => {
       const response = await authAPI.login({ email, password });
       const { user } = response.data;
 
+      // Clear any existing cache to ensure fresh data for the new user
+      queryClient.clear();
+
       setUser(user);
       return { success: true };
     } catch (error) {
@@ -58,6 +62,9 @@ export const AuthProvider = ({ children }) => {
 
       const response = await authAPI.register({ email, password, cash });
       const { user } = response.data;
+
+      // Clear any existing cache to ensure fresh data for the new user
+      queryClient.clear();
 
       setUser(user);
       return { success: true };
@@ -87,6 +94,10 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
+      // Clear all cached data to prevent data leakage between users
+      queryClient.clear();
+
+      // Reset user state
       setUser(null);
       setError("");
     }

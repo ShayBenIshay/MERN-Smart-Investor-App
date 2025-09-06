@@ -1,5 +1,11 @@
 import React, { Suspense, lazy } from "react";
-import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Link,
+  Navigate,
+} from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider, useAuth } from "./context/AuthContext";
@@ -18,6 +24,28 @@ const TransactionsHistory = lazy(() => import("./pages/TransactionsHistory"));
 
 // Query client is now imported from config
 
+// Component to redirect from /portfolio to /portfolio/:userId
+const PortfolioRedirect = () => {
+  const { user, loading } = useAuth();
+
+  console.log("PortfolioRedirect - user:", user, "loading:", loading);
+
+  if (loading) {
+    return <div>Loading user data...</div>;
+  }
+
+  if (!user) {
+    return <div>Please log in to view your portfolio</div>;
+  }
+
+  if (!user._id) {
+    return <div>User ID not found. Please try logging in again.</div>;
+  }
+
+  console.log("PortfolioRedirect - redirecting to:", `/portfolio/${user._id}`);
+  return <Navigate to={`/portfolio/${user._id}`} replace />;
+};
+
 const NavBar = React.memo(() => {
   const { user, logout } = useAuth();
 
@@ -34,7 +62,7 @@ const NavBar = React.memo(() => {
             </Link>
           </li>
           <li className="nav-item">
-            <Link to="/portfolio" className="nav-link">
+            <Link to={`/portfolio/${user?._id}`} className="nav-link">
               Portfolio
             </Link>
           </li>
@@ -74,7 +102,8 @@ function AppContent() {
             <Suspense fallback={<LoadingSpinner />}>
               <Routes>
                 <Route path="/" element={<Home />} />
-                <Route path="/portfolio" element={<Portfolio />} />
+                <Route path="/portfolio" element={<PortfolioRedirect />} />
+                <Route path="/portfolio/:userId" element={<Portfolio />} />
                 <Route path="/transactions" element={<TransactionsHistory />} />
                 <Route path="/profile" element={<Profile />} />
               </Routes>

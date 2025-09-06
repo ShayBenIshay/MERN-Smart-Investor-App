@@ -45,6 +45,33 @@ const transactionValidation = [
   body("executedAt").isISO8601().withMessage("ExecutedAt must be a valid date"),
 ];
 
+const batchTransactionValidation = [
+  body("transactions")
+    .isArray({ min: 1, max: 10 })
+    .withMessage("Transactions must be an array with 1-10 items"),
+  body("transactions.*.operation")
+    .isIn(["buy", "sell"])
+    .withMessage("Each transaction operation must be either buy or sell"),
+  body("transactions.*.price")
+    .isNumeric()
+    .withMessage("Each transaction price must be a number")
+    .isFloat({ min: 0.01 })
+    .withMessage("Each transaction price must be greater than 0"),
+  body("transactions.*.papers")
+    .isInt({ min: 1 })
+    .withMessage("Each transaction papers must be a positive integer"),
+  body("transactions.*.ticker")
+    .isLength({ min: 1, max: 10 })
+    .withMessage("Each transaction ticker must be between 1 and 10 characters")
+    .isAlphanumeric()
+    .withMessage(
+      "Each transaction ticker must contain only letters and numbers"
+    ),
+  body("transactions.*.executedAt")
+    .isISO8601()
+    .withMessage("Each transaction executedAt must be a valid date"),
+];
+
 const profileUpdateValidation = [
   body("firstName")
     .optional()
@@ -79,6 +106,7 @@ module.exports = {
   registerValidation,
   loginValidation,
   transactionValidation,
+  batchTransactionValidation,
   profileUpdateValidation,
   handleValidationErrors,
 };

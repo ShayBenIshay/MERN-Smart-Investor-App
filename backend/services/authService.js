@@ -39,7 +39,7 @@ class AuthService {
   // Format user response (remove sensitive data)
   formatUserResponse(user) {
     return {
-      id: user._id,
+      _id: user._id,
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,

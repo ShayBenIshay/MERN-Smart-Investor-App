@@ -1,4 +1,10 @@
-import React, { useMemo, useState, useEffect } from "react";
+import React, {
+  useMemo,
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+} from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   useTransactions,
@@ -33,6 +39,7 @@ function TransactionsHistory() {
 
   const [currentPage, setCurrentPage] = useState(initialPage);
   const [filters, setFilters] = useState(initialFilters);
+  const tickerInputRef = useRef(null);
 
   // Keep local state in sync if URL changes (e.g., back/forward navigation)
   useEffect(() => {
@@ -79,22 +86,27 @@ function TransactionsHistory() {
     deleteMutation.mutate(transactionId);
   };
 
-  const handleFilterChange = (filterName, value) => {
-    setFilters((prev) => {
-      const next = { ...prev, [filterName]: value };
+  const handleFilterChange = useCallback(
+    (filterName, value) => {
+      setFilters((prev) => {
+        const next = { ...prev, [filterName]: value };
 
-      // Update URL search params
-      const newParams = new URLSearchParams(searchParams);
-      Object.entries({ ...next, page: 1 }).forEach(([key, v]) => {
-        if (v == null || v === "") newParams.delete(key);
-        else newParams.set(key, v);
+        // Update URL search params only for non-ticker filters to avoid focus loss
+        if (filterName !== "ticker") {
+          const newParams = new URLSearchParams(searchParams);
+          Object.entries({ ...next, page: 1 }).forEach(([key, v]) => {
+            if (v == null || v === "") newParams.delete(key);
+            else newParams.set(key, v);
+          });
+          setSearchParams(newParams, { replace: false });
+        }
+
+        return next;
       });
-      setSearchParams(newParams, { replace: false });
-
-      return next;
-    });
-    setCurrentPage(1); // Reset to first page when filters change
-  };
+      setCurrentPage(1); // Reset to first page when filters change
+    },
+    [searchParams, setSearchParams]
+  );
 
   const handleClearFilters = () => {
     setFilters({});
@@ -162,6 +174,7 @@ function TransactionsHistory() {
         filters={filters}
         onFilterChange={handleFilterChange}
         onClearFilters={handleClearFilters}
+        tickerInputRef={tickerInputRef}
       />
 
       {transactions.length === 0 ? (

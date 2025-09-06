@@ -99,3 +99,26 @@ export const useDeleteTransaction = () => {
     },
   });
 };
+
+/**
+ * Custom hook for adding multiple transactions in batch
+ */
+export const useBatchTransactions = () => {
+  const queryClient = useQueryClient();
+  const { refreshUser } = useAuth();
+
+  return useMutation({
+    mutationFn: (transactions) => transactionsAPI.createBatch(transactions),
+    onSuccess: () => {
+      // Invalidate and refetch transactions
+      queryClient.invalidateQueries(["transactions"]);
+      // Invalidate holdings to update portfolio
+      queryClient.invalidateQueries(["holdings"]);
+      // Refresh user data to update cash amount
+      refreshUser();
+    },
+    onError: (error) => {
+      console.error("Failed to add batch transactions:", error);
+    },
+  });
+};

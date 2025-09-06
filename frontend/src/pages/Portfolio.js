@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useParams } from "react-router-dom";
 import { usePortfolio } from "../hooks/usePortfolio";
 import { PortfolioTableSkeleton } from "../components/Skeleton";
-import { holdingsAPI } from "../services/api";
+import { portfolioAPI } from "../services/api";
 import "./Portfolio.css";
 
 // Memoized Portfolio Row Component - moved outside to avoid Rules of Hooks violation
@@ -22,49 +24,8 @@ const PortfolioRow = React.memo(
         isColumnVisible(columnKey) ? (
           <td key={columnKey}>
             {columnKey === "position" && holding.position.toLocaleString()}
-            {columnKey === "lastPrice" && formatCurrency(holding.lastPrice)}
             {columnKey === "totalSpent" && formatCurrency(holding.totalSpent)}
             {columnKey === "totalValue" && formatCurrency(holding.totalValue)}
-            {columnKey === "stopLoss" && (
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={editedHoldings[holding.symbol]?.stopLoss || 0}
-                onChange={(e) =>
-                  handleInputChange(holding.symbol, "stopLoss", e.target.value)
-                }
-                className="editable-input currency-input"
-              />
-            )}
-            {columnKey === "riskDollar" && (
-              <span className={holding.riskDollar > 0 ? "negative" : ""}>
-                {holding.riskDollar > 0
-                  ? formatCurrency(holding.riskDollar)
-                  : "-"}
-              </span>
-            )}
-            {columnKey === "riskPercent" && (
-              <span className={holding.riskPercent > 0 ? "negative" : ""}>
-                {holding.riskPercent > 0
-                  ? formatPercent(holding.riskPercent)
-                  : "-"}
-              </span>
-            )}
-            {columnKey === "entryReason" && (
-              <input
-                type="text"
-                value={editedHoldings[holding.symbol]?.entryReason || ""}
-                onChange={(e) =>
-                  handleInputChange(
-                    holding.symbol,
-                    "entryReason",
-                    e.target.value
-                  )
-                }
-                className="editable-input text-input"
-              />
-            )}
           </td>
         ) : (
           <td key={columnKey} className="collapsed-cell">
@@ -72,6 +33,39 @@ const PortfolioRow = React.memo(
           </td>
         )
       )}
+      <td>
+        <input
+          type="number"
+          step="0.01"
+          min="0"
+          value={editedHoldings[holding.symbol]?.stopLoss || 0}
+          onChange={(e) =>
+            handleInputChange(holding.symbol, "stopLoss", e.target.value)
+          }
+          className="editable-input currency-input"
+        />
+      </td>
+      <td>
+        <span className={holding.riskDollar > 0 ? "negative" : ""}>
+          {holding.riskDollar > 0 ? formatCurrency(holding.riskDollar) : "-"}
+        </span>
+      </td>
+      <td>
+        <span className={holding.riskPercent > 0 ? "negative" : ""}>
+          {holding.riskPercent > 0 ? formatPercent(holding.riskPercent) : "-"}
+        </span>
+      </td>
+      <td>{formatCurrency(holding.lastPrice)}</td>
+      <td>
+        <input
+          type="text"
+          value={editedHoldings[holding.symbol]?.entryReason || ""}
+          onChange={(e) =>
+            handleInputChange(holding.symbol, "entryReason", e.target.value)
+          }
+          className="editable-input text-input"
+        />
+      </td>
       <td className={holding.unrealizedPL >= 0 ? "positive" : "negative"}>
         {formatCurrency(holding.unrealizedPL)}
       </td>
@@ -86,6 +80,12 @@ const PortfolioRow = React.memo(
 );
 
 function Portfolio() {
+  const queryClient = useQueryClient();
+  const { userId } = useParams();
+
+  console.log("Portfolio component - userId from params:", userId);
+  console.log("Portfolio component - current URL:", window.location.pathname);
+
   const {
     holdings,
     totalSpent,
@@ -95,15 +95,17 @@ function Portfolio() {
     isLoading,
     error,
     isSyncing,
-  } = usePortfolio();
+  } = usePortfolio(userId);
 
   // State for editable values
   const [editedHoldings, setEditedHoldings] = useState({});
   const [hasChanges, setHasChanges] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
 
-  // State for collapsed columns
-  const [collapsedColumns, setCollapsedColumns] = useState(new Set());
+  // State for collapsed columns - start with all columns collapsed by default
+  const [collapsedColumns, setCollapsedColumns] = useState(
+    new Set(["position", "totalSpent", "totalValue"])
+  );
 
   // Initialize edited holdings when data loads
   useEffect(() => {
@@ -135,25 +137,29 @@ function Portfolio() {
 
   // Handle update - memoized to prevent re-renders
   const handleUpdate = useCallback(async () => {
-    if (isUpdating) return;
+    if (isUpdating || !userId) return;
 
     setIsUpdating(true);
     try {
       const updatePromises = Object.entries(editedHoldings).map(
-        ([symbol, data]) => holdingsAPI.update(symbol, data)
+        ([symbol, data]) => portfolioAPI.updateHolding(userId, symbol, data)
       );
 
       await Promise.all(updatePromises);
       setHasChanges(false);
-      console.log("Holdings updated successfully");
-      alert("Holdings updated successfully!");
+
+      // Invalidate portfolio query to trigger recalculation of risk metrics
+      await queryClient.invalidateQueries({ queryKey: ["portfolio", userId] });
+
+      console.log("Portfolio updated successfully");
+      alert("Portfolio updated successfully!");
     } catch (error) {
-      console.error("Error updating holdings:", error);
-      alert("Error updating holdings. Please try again.");
+      console.error("Error updating portfolio:", error);
+      alert("Error updating portfolio. Please try again.");
     } finally {
       setIsUpdating(false);
     }
-  }, [editedHoldings, isUpdating]);
+  }, [editedHoldings, isUpdating, queryClient, userId]);
 
   // Toggle collapse/expand for a column - memoized
   const toggleColumnCollapse = useCallback((columnKey) => {
@@ -182,16 +188,7 @@ function Portfolio() {
 
   // Memoized collapsible columns configuration
   const collapsibleColumns = useMemo(
-    () => [
-      "position",
-      "lastPrice",
-      "totalSpent",
-      "totalValue",
-      "stopLoss",
-      "riskDollar",
-      "riskPercent",
-      "entryReason",
-    ],
+    () => ["position", "totalSpent", "totalValue"],
     []
   );
 
@@ -261,7 +258,31 @@ function Portfolio() {
               <div className="sync-indicator">🔄 Syncing holdings...</div>
             )}
             <button onClick={toggleAllColumns} className="toggle-all-button">
-              {collapsedColumns.size === 0 ? "▼ Collapse All" : "▶ Expand All"}
+              {collapsedColumns.size === 0 ? (
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+                  <line x1="1" y1="1" x2="23" y2="23" />
+                </svg>
+              ) : (
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              )}
             </button>
           </div>
           {hasChanges && (
@@ -286,13 +307,8 @@ function Portfolio() {
                     >
                       <span className="collapse-icon">▼</span>
                       {columnKey === "position" && "Position"}
-                      {columnKey === "lastPrice" && "Last Price"}
                       {columnKey === "totalSpent" && "Total Spent"}
                       {columnKey === "totalValue" && "Total Value"}
-                      {columnKey === "stopLoss" && "Stop Loss $"}
-                      {columnKey === "riskDollar" && "Risk $"}
-                      {columnKey === "riskPercent" && "Risk %"}
-                      {columnKey === "entryReason" && "Entry Reason"}
                     </th>
                   ) : (
                     <th
@@ -309,6 +325,11 @@ function Portfolio() {
                     </th>
                   )
                 )}
+                <th>Stop Loss $</th>
+                <th>Risk $</th>
+                <th>Risk %</th>
+                <th>Last Price</th>
+                <th>Entry Reason</th>
                 <th>Unrealized P&L $</th>
                 <th>Unrealized P&L %</th>
                 <th>Total %</th>
@@ -352,6 +373,11 @@ function Portfolio() {
                     </td>
                   )
                 )}
+                <td>-</td>
+                <td>-</td>
+                <td>-</td>
+                <td>-</td>
+                <td>-</td>
                 <td className={unrealizedPL >= 0 ? "positive" : "negative"}>
                   <strong>{formatCurrency(unrealizedPL)}</strong>
                 </td>

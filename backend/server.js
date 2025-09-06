@@ -11,6 +11,7 @@ require("dotenv").config();
 const authRoutes = require("./routes/auth");
 const transactionRoutes = require("./routes/transactions");
 const holdingRoutes = require("./routes/holdings");
+const portfolioRoutes = require("./routes/portfolio");
 const errorHandler = require("./middleware/errorHandler");
 const requestLogger = require("./middleware/requestLogger");
 const cacheService = require("./services/cacheService");
@@ -74,6 +75,7 @@ app.options("*", (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api/holdings", holdingRoutes);
+app.use("/api/portfolio", portfolioRoutes);
 
 // Add this debug line
 console.log("Registered transaction routes:");

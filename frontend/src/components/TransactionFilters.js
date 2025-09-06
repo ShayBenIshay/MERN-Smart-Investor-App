@@ -61,12 +61,18 @@ const ClearButton = styled.button`
   }
 `;
 
-const TransactionFilters = ({ filters, onFilterChange, onClearFilters }) => {
+const TransactionFilters = ({
+  filters,
+  onFilterChange,
+  onClearFilters,
+  tickerInputRef,
+}) => {
   return (
     <FilterContainer>
       <FilterGroup>
         <Label>Ticker</Label>
         <Input
+          ref={tickerInputRef}
           type="text"
           placeholder="e.g., AAPL"
           value={filters.ticker || ""}

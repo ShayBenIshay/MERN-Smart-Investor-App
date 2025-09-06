@@ -1,6 +1,6 @@
 import { useMemo, useEffect, useCallback, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { transactionsAPI, holdingsAPI } from "../services/api";
+import { transactionsAPI, portfolioAPI } from "../services/api";
 
 // Check if holdings are valid (have lastSyncedAt)
 const areHoldingsValid = (holdings) => {
@@ -133,7 +133,9 @@ const calculatePortfolio = (transactions) => {
   };
 };
 
-export const usePortfolio = () => {
+export const usePortfolio = (userId) => {
+  console.log("usePortfolio hook called with userId:", userId);
+
   // State for sync status and loading strategy
   const [isSyncing, setIsSyncing] = useState(false);
   const [shouldFetchTransactions, setShouldFetchTransactions] = useState(true);
@@ -145,14 +147,21 @@ export const usePortfolio = () => {
     error: holdingsError,
     refetch: refetchHoldings,
   } = useQuery({
-    queryKey: ["holdings"],
-    queryFn: () =>
-      holdingsAPI.getAll().then((res) => {
-        console.log("Holdings data fetched:", res.data.data);
+    queryKey: ["portfolio", userId],
+    queryFn: () => {
+      if (!userId) {
+        console.error("Cannot fetch portfolio: userId is undefined");
+        throw new Error("User ID is required");
+      }
+      console.log("Fetching portfolio for userId:", userId);
+      return portfolioAPI.getPortfolio(userId).then((res) => {
+        console.log("Portfolio data fetched:", res.data.data);
         return res.data.data;
-      }),
+      });
+    },
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
+    enabled: !!userId, // Only fetch when user is available
   });
 
   // Conditionally fetch transactions only when needed
@@ -180,6 +189,10 @@ export const usePortfolio = () => {
   const syncHoldings = useCallback(
     async (transactionsData) => {
       if (!transactionsData || transactionsData.length === 0) return;
+      if (!userId) {
+        console.error("Cannot sync portfolio: userId is undefined");
+        return;
+      }
 
       setIsSyncing(true);
       try {
@@ -207,8 +220,8 @@ export const usePortfolio = () => {
           lastPrice: priceMap[holding.symbol] || 0,
         }));
 
-        console.log("Syncing holdings:", holdingsToSync);
-        await holdingsAPI.sync(holdingsToSync);
+        console.log("Syncing portfolio:", holdingsToSync);
+        await portfolioAPI.syncPortfolio(userId, holdingsToSync);
         refetchHoldings();
       } catch (error) {
         console.error("Error syncing holdings:", error);
@@ -216,7 +229,7 @@ export const usePortfolio = () => {
         setIsSyncing(false);
       }
     },
-    [refetchHoldings]
+    [refetchHoldings, userId]
   );
 
   // Smart loading strategy

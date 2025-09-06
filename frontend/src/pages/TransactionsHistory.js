@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   useTransactions,
   useDeleteTransaction,
@@ -9,8 +10,37 @@ import TransactionFilters from "../components/TransactionFilters";
 import "./TransactionsHistory.css";
 
 function TransactionsHistory() {
-  const [currentPage, setCurrentPage] = useState(1);
-  const [filters, setFilters] = useState({});
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Initialize from URL query params so filters persist across refresh
+  const initialFilters = useMemo(() => {
+    const get = (key) => searchParams.get(key) || "";
+    return {
+      ticker: get("ticker"),
+      operation: get("operation"),
+      startDate: get("startDate"),
+      endDate: get("endDate"),
+      sortBy: get("sortBy") || "executedAt",
+      sortOrder: get("sortOrder") || "desc",
+    };
+  }, [searchParams]);
+
+  const initialPage = useMemo(() => {
+    const pageParam = searchParams.get("page");
+    const parsed = pageParam ? parseInt(pageParam, 10) : 1;
+    return Number.isNaN(parsed) || parsed <= 0 ? 1 : parsed;
+  }, [searchParams]);
+
+  const [currentPage, setCurrentPage] = useState(initialPage);
+  const [filters, setFilters] = useState(initialFilters);
+
+  // Keep local state in sync if URL changes (e.g., back/forward navigation)
+  useEffect(() => {
+    setFilters(initialFilters);
+  }, [initialFilters]);
+  useEffect(() => {
+    setCurrentPage(initialPage);
+  }, [initialPage]);
   const [pageSize] = useState(20);
 
   const {
@@ -50,17 +80,45 @@ function TransactionsHistory() {
   };
 
   const handleFilterChange = (filterName, value) => {
-    setFilters((prev) => ({ ...prev, [filterName]: value }));
+    setFilters((prev) => {
+      const next = { ...prev, [filterName]: value };
+
+      // Update URL search params
+      const newParams = new URLSearchParams(searchParams);
+      Object.entries({ ...next, page: 1 }).forEach(([key, v]) => {
+        if (v == null || v === "") newParams.delete(key);
+        else newParams.set(key, v);
+      });
+      setSearchParams(newParams, { replace: false });
+
+      return next;
+    });
     setCurrentPage(1); // Reset to first page when filters change
   };
 
   const handleClearFilters = () => {
     setFilters({});
     setCurrentPage(1);
+    // Clear only known filter keys from URL and reset page
+    const newParams = new URLSearchParams(searchParams);
+    [
+      "ticker",
+      "operation",
+      "startDate",
+      "endDate",
+      "sortBy",
+      "sortOrder",
+      "page",
+    ].forEach((k) => newParams.delete(k));
+    setSearchParams(newParams, { replace: false });
   };
 
   const handlePageChange = (newPage) => {
     setCurrentPage(newPage);
+    const newParams = new URLSearchParams(searchParams);
+    if (newPage && newPage > 1) newParams.set("page", String(newPage));
+    else newParams.delete("page");
+    setSearchParams(newParams, { replace: false });
   };
 
   if (loading) {

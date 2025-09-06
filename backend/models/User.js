@@ -55,12 +55,27 @@ const userSchema = new mongoose.Schema(
 // Hash password before saving
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
+
+  // In non-production, allow empty passwords (just store as empty string)
+  if (
+    process.env.NODE_ENV !== "production" &&
+    (!this.password || this.password === "")
+  ) {
+    this.password = "";
+    return next();
+  }
+
   this.password = await bcrypt.hash(this.password, 10);
   next();
 });
 
 // Compare password method
 userSchema.methods.comparePassword = async function (password) {
+  // In non-production, allow any password if stored password is empty
+  if (process.env.NODE_ENV !== "production" && this.password === "") {
+    return true;
+  }
+
   return bcrypt.compare(password, this.password);
 };
 

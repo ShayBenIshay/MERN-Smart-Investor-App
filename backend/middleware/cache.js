@@ -38,7 +38,11 @@ const cacheTransactions = (req, res, next) => {
   }
 
   const userId = req.user._id.toString();
-  const cachedTransactions = cacheService.getTransactionsFromCache(userId);
+  const urlSuffix = req.originalUrl || req.url;
+  const cachedTransactions = cacheService.getTransactionsFromCache(
+    userId,
+    urlSuffix
+  );
 
   if (cachedTransactions) {
     return res.json({
@@ -52,7 +56,7 @@ const cacheTransactions = (req, res, next) => {
   const originalJson = res.json;
   res.json = function (data) {
     if (res.statusCode === 200 && data.success && data.data) {
-      cacheService.setTransactionsCache(userId, data.data);
+      cacheService.setTransactionsCache(userId, data.data, urlSuffix);
     }
     originalJson.call(this, data);
   };

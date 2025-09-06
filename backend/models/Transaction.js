@@ -14,8 +14,15 @@ const transactionSchema = new mongoose.Schema(
     price: {
       type: mongoose.Schema.Types.Decimal128,
       required: true,
-      get: (v) => parseFloat(v),
-      set: (v) => v.toFixed(2),
+      get: (v) => (v == null ? v : parseFloat(v.toString())),
+      set: (v) => {
+        if (v == null) return v;
+        // If already a Decimal128, keep as-is
+        if (v && v._bsontype === "Decimal128") return v;
+        const numeric = typeof v === "number" ? v : parseFloat(v);
+        if (Number.isNaN(numeric)) return v;
+        return mongoose.Types.Decimal128.fromString(numeric.toFixed(2));
+      },
     },
     papers: {
       type: Number,

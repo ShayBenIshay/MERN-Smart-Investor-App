@@ -14,8 +14,16 @@ function Signup({ onSwitchToLogin }) {
     e.preventDefault();
     setFormError("");
 
-    if (!email || !password || !confirmPassword) {
-      setFormError("All fields are required");
+    if (!email) {
+      setFormError("Email is required");
+      return;
+    }
+
+    // In production, password is required
+    const isProduction = process.env.NODE_ENV === "production";
+
+    if (isProduction && (!password || !confirmPassword)) {
+      setFormError("Password fields are required");
       return;
     }
 
@@ -24,8 +32,8 @@ function Signup({ onSwitchToLogin }) {
       return;
     }
 
-    if (password.length < 6) {
-      setFormError("Password must be at least 6 characters");
+    if (isProduction && password.length < 3) {
+      setFormError("Password must be at least 3 characters");
       return;
     }
 
@@ -70,8 +78,12 @@ function Signup({ onSwitchToLogin }) {
               id="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              required
-              placeholder="Enter your password (min 6 characters)"
+              required={process.env.NODE_ENV === "production"}
+              placeholder={
+                process.env.NODE_ENV === "production"
+                  ? "Enter your password (min 3 characters)"
+                  : "Password (optional in dev)"
+              }
             />
           </div>
 
@@ -82,8 +94,12 @@ function Signup({ onSwitchToLogin }) {
               id="confirmPassword"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              placeholder="Confirm your password"
+              required={process.env.NODE_ENV === "production"}
+              placeholder={
+                process.env.NODE_ENV === "production"
+                  ? "Confirm your password"
+                  : "Confirm password (optional in dev)"
+              }
             />
           </div>
 

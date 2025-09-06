@@ -36,24 +36,42 @@ class CacheService {
   }
 
   // Transaction cache methods
-  getTransactionsFromCache(userId) {
-    const cached = transactionCache.get(`transactions:${userId}`);
+  getTransactionsFromCache(userId, urlSuffix) {
+    const key = urlSuffix
+      ? `transactions:${userId}:${urlSuffix}`
+      : `transactions:${userId}`;
+    const cached = transactionCache.get(key);
     if (cached) {
-      logger.debug("Cache hit for transactions", { userId });
+      logger.debug("Cache hit for transactions", { userId, key });
       return cached;
     }
-    logger.debug("Cache miss for transactions", { userId });
+    logger.debug("Cache miss for transactions", { userId, key });
     return null;
   }
 
-  setTransactionsCache(userId, transactions) {
-    transactionCache.set(`transactions:${userId}`, transactions);
-    logger.debug("Transactions cached", { userId, count: transactions.length });
+  setTransactionsCache(userId, transactions, urlSuffix) {
+    const key = urlSuffix
+      ? `transactions:${userId}:${urlSuffix}`
+      : `transactions:${userId}`;
+    transactionCache.set(key, transactions);
+    logger.debug("Transactions cached", {
+      userId,
+      key,
+      count: transactions.length,
+    });
   }
 
   invalidateTransactionsCache(userId) {
-    transactionCache.del(`transactions:${userId}`);
-    logger.debug("Transactions cache invalidated", { userId });
+    const prefix = `transactions:${userId}`;
+    const keys = transactionCache.keys();
+    const toDelete = keys.filter((k) => k.startsWith(prefix));
+    if (toDelete.length > 0) {
+      transactionCache.del(toDelete);
+    }
+    logger.debug("Transactions cache invalidated", {
+      userId,
+      deleted: toDelete.length,
+    });
   }
 
   // General cache methods

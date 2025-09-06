@@ -86,23 +86,23 @@ const TransactionFilters = ({ filters, onFilterChange, onClearFilters }) => {
         </Select>
       </FilterGroup>
 
-      <FilterGroup>
+      {/* <FilterGroup>
         <Label>Start Date</Label>
         <Input
           type="date"
           value={filters.startDate || ""}
           onChange={(e) => onFilterChange("startDate", e.target.value)}
         />
-      </FilterGroup>
+      </FilterGroup> */}
 
-      <FilterGroup>
+      {/* <FilterGroup>
         <Label>End Date</Label>
         <Input
           type="date"
           value={filters.endDate || ""}
           onChange={(e) => onFilterChange("endDate", e.target.value)}
         />
-      </FilterGroup>
+      </FilterGroup> */}
 
       <FilterGroup>
         <Label>Sort By</Label>

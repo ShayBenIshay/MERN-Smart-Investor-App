@@ -54,6 +54,10 @@ app.use(
 app.use("/api/auth", authRoutes);
 app.use("/api/transactions", transactionRoutes);
 
+// Add this after your existing routes
+const alpacaPrices = require("./services/alpacaPrices");
+alpacaPrices.connect();
+
 // Enhanced health check
 app.get("/api/health", async (req, res) => {
   const health = {

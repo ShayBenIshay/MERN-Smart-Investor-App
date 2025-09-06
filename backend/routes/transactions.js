@@ -49,13 +49,50 @@ router.get(
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const total = await Transaction.countDocuments(filter);
 
-    // Execute query with pagination
-    const transactions = await Transaction.find(filter)
-      .sort(sort)
-      .skip(skip)
-      .limit(parseInt(limit))
-      .lean()
-      .exec();
+    let transactions;
+
+    if (sortBy === "price") {
+      // Sort by total value (price * papers), not price/share
+      const sortDirection = sortOrder === "desc" ? -1 : 1;
+      transactions = await Transaction.aggregate([
+        { $match: filter },
+        { $addFields: { priceNum: { $toDouble: "$price" } } },
+        {
+          $addFields: {
+            totalValueNum: { $multiply: ["$papers", "$priceNum"] },
+          },
+        },
+        { $sort: { totalValueNum: sortDirection } },
+        { $skip: skip },
+        { $limit: parseInt(limit) },
+        { $project: { priceNum: 0, totalValueNum: 0 } },
+      ]).exec();
+    } else {
+      // Execute query with pagination
+      transactions = await Transaction.find(filter)
+        .sort(sort)
+        .skip(skip)
+        .limit(parseInt(limit))
+        .lean()
+        .exec();
+    }
+
+    // Normalize Decimal128 price to number to avoid NaN on client
+    const normalizedTransactions = transactions.map((t) => {
+      let normalizedPrice = t.price;
+      if (t.price != null) {
+        if (typeof t.price === "object") {
+          const decimalString =
+            (t.price && t.price.$numberDecimal) ||
+            (typeof t.price.toString === "function"
+              ? t.price.toString()
+              : null);
+          normalizedPrice =
+            decimalString != null ? parseFloat(decimalString) : t.price;
+        }
+      }
+      return { ...t, price: normalizedPrice };
+    });
 
     // Calculate pagination metadata
     const totalPages = Math.ceil(total / parseInt(limit));
@@ -64,7 +101,7 @@ router.get(
 
     res.json({
       success: true,
-      data: transactions,
+      data: normalizedTransactions,
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
@@ -89,10 +126,14 @@ router.post(
   asyncHandler(async (req, res) => {
     const { operation, executedAt, price, papers, ticker } = req.body;
 
-    // Convert to Decimal128 for precise calculations
-    const priceDecimal = new mongoose.Types.Decimal128(price.toString());
+    // Convert to Decimal128 for storage and use numeric math for calculations
+    const priceDecimal = new mongoose.Types.Decimal128(
+      parseFloat(price).toFixed(2)
+    );
     const papersInt = parseInt(papers);
-    const transactionValue = priceDecimal.mul(papersInt);
+    const transactionValue = new mongoose.Types.Decimal128(
+      (parseFloat(price) * papersInt).toFixed(2)
+    );
 
     const session = await mongoose.startSession();
     session.startTransaction();
@@ -139,6 +180,22 @@ router.post(
     } finally {
       session.endSession();
     }
+  })
+);
+
+// Get all transactions without pagination (for portfolio calculations)
+router.get(
+  "/all",
+  auth,
+  asyncHandler(async (req, res) => {
+    const transactions = await Transaction.find({ userId: req.user._id })
+      .sort({ executedAt: -1 })
+      .lean();
+
+    res.json({
+      success: true,
+      data: transactions,
+    });
   })
 );
 
@@ -252,6 +309,98 @@ router.delete(
     } finally {
       session.endSession();
     }
+  })
+);
+
+// Update the price route to fetch dynamically
+router.get(
+  "/prices/:symbol",
+  auth,
+  asyncHandler(async (req, res) => {
+    const { symbol } = req.params;
+    const alpacaPrices = require("../services/alpacaPrices");
+
+    // Use the async method to fetch price if not cached
+    const price = await alpacaPrices.getPriceAsync(symbol.toUpperCase());
+
+    res.json({
+      success: true,
+      data: { symbol: symbol.toUpperCase(), price },
+    });
+  })
+);
+
+// Update the test route
+router.get(
+  "/prices/test/:symbol",
+  auth,
+  asyncHandler(async (req, res) => {
+    const { symbol } = req.params;
+    const alpacaPrices = require("../services/alpacaPrices");
+    const price = alpacaPrices.getPrice(symbol.toUpperCase());
+    const allPrices = alpacaPrices.getAllPrices();
+    const status = alpacaPrices.getConnectionStatus();
+
+    res.json({
+      success: true,
+      data: {
+        symbol: symbol.toUpperCase(),
+        price,
+        allPrices,
+        status,
+      },
+    });
+  })
+);
+
+// Add this test route to check credentials
+router.get(
+  "/prices/debug",
+  auth,
+  asyncHandler(async (req, res) => {
+    const config = require("../config/config");
+    const currentConfig = config[process.env.NODE_ENV || "development"];
+
+    res.json({
+      success: true,
+      data: {
+        hasApiKey: !!currentConfig.alpaca.apiKey,
+        apiKeyPreview: currentConfig.alpaca.apiKey
+          ? currentConfig.alpaca.apiKey.substring(0, 8) + "..."
+          : "No API key",
+        hasSecretKey: !!currentConfig.alpaca.secretKey,
+        secretKeyPreview: currentConfig.alpaca.secretKey
+          ? currentConfig.alpaca.secretKey.substring(0, 8) + "..."
+          : "No secret key",
+        environment: process.env.NODE_ENV || "development",
+      },
+    });
+  })
+);
+
+// Add this new endpoint
+router.post(
+  "/prices/subscribe-portfolio",
+  // auth,
+  asyncHandler(async (req, res) => {
+    const { symbols } = req.body;
+    const alpacaPrices = require("../services/alpacaPrices");
+
+    if (!symbols || !Array.isArray(symbols)) {
+      return res.status(400).json({
+        success: false,
+        error: "Symbols array is required",
+      });
+    }
+
+    // Subscribe to new symbols
+    alpacaPrices.subscribeToPortfolio(symbols);
+
+    res.json({
+      success: true,
+      message: `Subscribed to ${symbols.length} symbols`,
+      subscribedSymbols: Array.from(alpacaPrices.subscribedSymbols),
+    });
   })
 );
 

@@ -1,10 +1,63 @@
-import React from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import toast from "react-hot-toast";
 import { useAddTransaction } from "../hooks/useTransactions";
+import { transactionsAPI } from "../services/api";
 import "./AddTransactionForm.css";
+
+// Custom hook for debounced price fetching
+const useDebouncedPrice = (symbol, delay = 500) => {
+  const [price, setPrice] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const timeoutRef = useRef(null);
+
+  useEffect(() => {
+    // Clear existing timeout
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    // Reset state if symbol is too short
+    if (!symbol || symbol.length < 2) {
+      setPrice(null);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
+    // Set loading state
+    setLoading(true);
+    setError(null);
+
+    // Create new timeout
+    timeoutRef.current = setTimeout(async () => {
+      try {
+        const response = await transactionsAPI.getPrice(symbol.toUpperCase());
+        console.log("API Response:", response.data); // Debug log
+        setPrice(response.data.data.price); // Fixed: access data.data.price
+        setError(null);
+      } catch (err) {
+        console.error("Price fetch error:", err); // Debug log
+        setPrice(null);
+        setError("Symbol not found");
+      } finally {
+        setLoading(false);
+      }
+    }, delay);
+
+    // Cleanup function
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [symbol, delay]);
+
+  return { price, loading, error };
+};
 
 // Validation schema
 const transactionSchema = yup.object({
@@ -33,6 +86,8 @@ const transactionSchema = yup.object({
 
 const AddTransactionForm = React.memo(({ onTransactionAdded }) => {
   const addTransactionMutation = useAddTransaction();
+  const [tickerValue, setTickerValue] = useState("");
+  const { price, loading, error } = useDebouncedPrice(tickerValue);
 
   const {
     register,
@@ -40,6 +95,8 @@ const AddTransactionForm = React.memo(({ onTransactionAdded }) => {
     formState: { errors, isSubmitting },
     reset,
     setError,
+    setValue,
+    watch,
   } = useForm({
     resolver: yupResolver(transactionSchema),
     defaultValues: {
@@ -47,18 +104,48 @@ const AddTransactionForm = React.memo(({ onTransactionAdded }) => {
       ticker: "",
       price: "",
       papers: "",
-      executedAt: new Date().toISOString().slice(0, 10),
+      executedAt: new Date().toISOString().split("T")[0], // Today's date in YYYY-MM-DD format
     },
   });
 
+  // Watch the ticker field for changes
+  const watchedTicker = watch("ticker");
+
+  // Update local state when form ticker changes
+  useEffect(() => {
+    setTickerValue(watchedTicker || "");
+  }, [watchedTicker]);
+
+  // Auto-fill price when real-time price is available
+  useEffect(() => {
+    if (price && !watchedTicker) {
+      setValue("price", price.toFixed(2));
+    }
+  }, [price, setValue, watchedTicker]);
+
   const onSubmit = async (data) => {
     try {
+      // Combine selected date with current time (hours, minutes, seconds)
+      const selectedDate = new Date(data.executedAt);
+      const currentTime = new Date();
+
+      // Create new date with selected date but current time
+      const executedAtWithTime = new Date(
+        selectedDate.getFullYear(),
+        selectedDate.getMonth(),
+        selectedDate.getDate(),
+        currentTime.getHours(),
+        currentTime.getMinutes(),
+        currentTime.getSeconds(),
+        currentTime.getMilliseconds()
+      );
+
       const transactionData = {
         ...data,
         ticker: data.ticker.toUpperCase(),
         price: parseFloat(data.price),
         papers: parseInt(data.papers),
-        executedAt: new Date(data.executedAt).toISOString(),
+        executedAt: executedAtWithTime.toISOString(),
       };
 
       const response = await addTransactionMutation.mutateAsync(
@@ -70,6 +157,7 @@ const AddTransactionForm = React.memo(({ onTransactionAdded }) => {
 
       // Reset form on success
       reset();
+      setTickerValue("");
 
       // Notify parent component if callback provided
       if (onTransactionAdded) {
@@ -108,13 +196,32 @@ const AddTransactionForm = React.memo(({ onTransactionAdded }) => {
 
           <div className="form-group">
             <label htmlFor="ticker">Stock Ticker *</label>
-            <input
-              type="text"
-              id="ticker"
-              {...register("ticker")}
-              placeholder="e.g., AAPL, TSLA"
-              style={{ textTransform: "uppercase" }}
-            />
+            <div className="ticker-input-container">
+              <input
+                type="text"
+                id="ticker"
+                {...register("ticker")}
+                placeholder="e.g., AAPL, TSLA"
+                style={{ textTransform: "uppercase" }}
+              />
+              {/* Real-time price display */}
+              <div className="price-display">
+                {loading && (
+                  <span className="price-loading">
+                    <span className="spinner"></span>
+                    Loading price...
+                  </span>
+                )}
+                {price && !loading && (
+                  <span className="current-price">
+                    Current: ${price.toFixed(2)}
+                  </span>
+                )}
+                {error && !loading && (
+                  <span className="price-error">{error}</span>
+                )}
+              </div>
+            </div>
             {errors.ticker && (
               <span className="error-text">{errors.ticker.message}</span>
             )}
@@ -128,7 +235,7 @@ const AddTransactionForm = React.memo(({ onTransactionAdded }) => {
               type="number"
               id="price"
               {...register("price")}
-              placeholder="0.00"
+              placeholder={price ? price.toFixed(2) : "0.00"}
               step="0.01"
               min="0.01"
             />

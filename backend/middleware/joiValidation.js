@@ -25,6 +25,11 @@ const validate = (schema, source = "body") => {
         originalData: data,
       });
 
+      // Also log to console for immediate debugging
+      console.log("🚨 VALIDATION FAILED:");
+      console.log("📋 Errors:", JSON.stringify(errors, null, 2));
+      console.log("📦 Original data:", JSON.stringify(data, null, 2));
+
       return res.status(400).json({
         success: false,
         error: "Validation failed",
@@ -45,16 +50,21 @@ const authSchemas = {
       "string.email": "Please provide a valid email address",
       "any.required": "Email is required",
     }),
-    password: Joi.string()
-      .min(8)
-      .pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
-      .required()
-      .messages({
-        "string.min": "Password must be at least 8 characters long",
-        "string.pattern.base":
-          "Password must contain at least one lowercase letter, one uppercase letter, and one number",
-        "any.required": "Password is required",
-      }),
+    password:
+      process.env.NODE_ENV === "production"
+        ? Joi.string()
+            .min(8)
+            .pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
+            .required()
+            .messages({
+              "string.min": "Password must be at least 8 characters long",
+              "string.pattern.base":
+                "Password must contain at least one lowercase letter, one uppercase letter, and one number",
+              "any.required": "Password is required",
+            })
+        : Joi.string().allow("").default("").messages({
+            "any.required": "Password is required",
+          }),
     firstName: Joi.string().trim().max(50).default(""),
     lastName: Joi.string().trim().max(50).default(""),
     cash: Joi.number().min(0).default(0),
@@ -62,7 +72,10 @@ const authSchemas = {
 
   login: Joi.object({
     email: Joi.string().email().lowercase().trim().required(),
-    password: Joi.string().required(),
+    password:
+      process.env.NODE_ENV === "production"
+        ? Joi.string().required()
+        : Joi.string().allow("").default(""),
   }),
 
   profileUpdate: Joi.object({

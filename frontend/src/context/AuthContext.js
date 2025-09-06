@@ -62,6 +62,17 @@ export const AuthProvider = ({ children }) => {
       setUser(user);
       return { success: true };
     } catch (error) {
+      console.log("Registration error response:", error.response?.data);
+
+      // Handle detailed validation errors
+      if (error.response?.data?.details) {
+        const validationErrors = error.response.data.details
+          .map((detail) => detail.message)
+          .join("; ");
+        setError(validationErrors);
+        return { success: false, error: validationErrors };
+      }
+
       const errorMessage = error.response?.data?.error || "Registration failed";
       setError(errorMessage);
       return { success: false, error: errorMessage };

@@ -9,6 +9,7 @@
     "import-portfolio": "node scripts/importPortfolio.js"
   },
   "dependencies": {
+    "axios": "^1.11.0",
     "bcryptjs": "^2.4.3",
     "compression": "^1.8.1",
     "cookie-parser": "^1.4.6",
@@ -22,7 +23,8 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^7.5.0",
     "node-cache": "^5.1.2",
-    "winston": "^3.17.0"
+    "winston": "^3.17.0",
+    "ws": "^8.14.2"
   },
   "devDependencies": {
     "nodemon": "^3.0.1"

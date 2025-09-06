@@ -65,23 +65,19 @@ export const authAPI = {
 
 // Transactions API
 export const transactionsAPI = {
-  getAll: (filters = {}, page = 1, limit = 20) => {
-    const params = new URLSearchParams();
-    params.append("page", page);
-    params.append("limit", limit);
-
-    Object.entries(filters).forEach(([key, value]) => {
-      if (value) params.append(key, value);
-    });
-
-    return api.get(`/transactions?${params.toString()}`);
-  },
-  getAllWithoutPagination: () => api.get("/transactions?limit=1000"), // Get all transactions
-  create: (transactionData) => api.post("/transactions", transactionData),
-  getById: (id) => api.get(`/transactions/${id}`),
-  update: (id, transactionData) =>
-    api.put(`/transactions/${id}`, transactionData),
+  getTransactions: (params) => api.get("/transactions", { params }),
+  getAll: (filters, page, limit) =>
+    api.get("/transactions", {
+      params: { ...filters, page, limit },
+    }),
+  getAllWithoutPagination: () => api.get("/transactions/all"),
+  create: (data) => api.post("/transactions", data),
+  get: (id) => api.get(`/transactions/${id}`),
+  update: (id, data) => api.put(`/transactions/${id}`, data),
   delete: (id) => api.delete(`/transactions/${id}`),
+  getPrice: (symbol) => api.get(`/transactions/prices/${symbol}`),
+  subscribeToPortfolio: (symbols) =>
+    api.post("/transactions/prices/subscribe-portfolio", { symbols }),
 };
 
 export default api;

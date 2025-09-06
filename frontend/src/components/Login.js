@@ -10,7 +10,12 @@ function Login({ onSwitchToSignup }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!email || !password) {
+    if (!email) {
+      return;
+    }
+
+    // In production, password is required
+    if (process.env.NODE_ENV === "production" && !password) {
       return;
     }
 
@@ -48,8 +53,12 @@ function Login({ onSwitchToSignup }) {
               id="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              required
-              placeholder="Enter your password"
+              required={process.env.NODE_ENV === "production"}
+              placeholder={
+                process.env.NODE_ENV === "production"
+                  ? "Enter your password"
+                  : "Password (optional in dev)"
+              }
             />
           </div>
 

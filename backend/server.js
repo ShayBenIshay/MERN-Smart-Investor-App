@@ -10,6 +10,7 @@ require("dotenv").config();
 
 const authRoutes = require("./routes/auth");
 const transactionRoutes = require("./routes/transactions");
+const holdingRoutes = require("./routes/holdings");
 const errorHandler = require("./middleware/errorHandler");
 const requestLogger = require("./middleware/requestLogger");
 const cacheService = require("./services/cacheService");
@@ -53,6 +54,7 @@ app.use(
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/transactions", transactionRoutes);
+app.use("/api/holdings", holdingRoutes);
 
 // Add this debug line
 console.log("Registered transaction routes:");

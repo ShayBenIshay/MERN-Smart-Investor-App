@@ -1,11 +1,14 @@
-import { useMemo, useEffect } from "react";
+import { useMemo, useEffect, useCallback, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { transactionsAPI } from "../services/api";
+import { transactionsAPI, holdingsAPI } from "../services/api";
 
-// Note: Real-time prices are now handled via WebSocket subscriptions
-// This hook calculates portfolio using mock prices initially
+// Check if holdings are valid (have lastSyncedAt)
+const areHoldingsValid = (holdings) => {
+  if (!holdings || holdings.length === 0) return false;
+  return holdings.every((holding) => holding.lastSyncedAt);
+};
 
-// Calculate portfolio from transactions
+// Calculate portfolio from transactions (for syncing)
 const calculatePortfolio = (transactions) => {
   if (!transactions || transactions.length === 0) {
     return {
@@ -23,7 +26,7 @@ const calculatePortfolio = (transactions) => {
   // Sort transactions by date to ensure FIFO processing
   transactions.sort((a, b) => new Date(a.executedAt) - new Date(b.executedAt));
 
-  transactions.forEach((transaction, index) => {
+  transactions.forEach((transaction) => {
     const { ticker, operation, papers, price } = transaction;
 
     // Convert price to number safely (handles Decimal128)
@@ -35,43 +38,13 @@ const calculatePortfolio = (transactions) => {
         : parseFloat(price) || 0;
     const numericPapers = parseInt(papers) || 0;
 
-    if (ticker === "SMCI") {
-      console.log(`SMCI Transaction #${index + 1}:`, {
-        operation,
-        papers: numericPapers,
-        executedAt: transaction.executedAt,
-        timestamp: new Date(transaction.executedAt).getTime(),
-        rawTransaction: transaction,
-      });
-    }
-
-    // Debug logging for problematic transactions
-    if (isNaN(numericPrice) || isNaN(numericPapers)) {
-      console.warn("Invalid transaction data:", {
-        ticker,
-        operation,
-        papers,
-        price,
-        numericPrice,
-        numericPapers,
-      });
-    }
-
-    if (ticker === "SMCI")
-      console.log("SMCI price conversion:", {
-        price,
-        numericPrice,
-        papers,
-        numericPapers,
-      });
-
     if (!holdingsMap[ticker]) {
       holdingsMap[ticker] = {
         symbol: ticker,
         totalShares: 0,
         totalSpent: 0,
         transactions: [],
-        buyLots: [], // New: Track individual buy lots
+        buyLots: [],
       };
     }
 
@@ -87,14 +60,6 @@ const calculatePortfolio = (transactions) => {
       });
       holding.totalShares += numericPapers;
       holding.totalSpent += numericPapers * numericPrice;
-
-      if (ticker === "SMCI") {
-        console.log("SMCI BUY:", {
-          shares: numericPapers,
-          totalSharesAfter: holding.totalShares,
-          totalSpentAfter: holding.totalSpent,
-        });
-      }
     } else if (operation === "sell") {
       let sharesToSell = numericPapers;
       let costBasisOfSoldShares = 0;
@@ -118,36 +83,10 @@ const calculatePortfolio = (transactions) => {
 
       holding.totalShares -= numericPapers;
       holding.totalSpent -= costBasisOfSoldShares;
-
-      if (ticker === "SMCI") {
-        console.log("SMCI SELL:", {
-          sharesToSellOriginal: numericPapers,
-          costBasisOfSoldShares,
-          totalSharesBefore: holding.totalShares + numericPapers,
-          totalSharesAfter: holding.totalShares,
-          totalSpentBefore: holding.totalSpent + costBasisOfSoldShares,
-          totalSpentAfter: holding.totalSpent,
-        });
-      }
     }
   });
 
-  // Debug: Log final position for SMCI
-  if (holdingsMap["SMCI"]) {
-    console.log("SMCI FINAL POSITION:", {
-      totalShares: holdingsMap["SMCI"].totalShares,
-      totalSpent: holdingsMap["SMCI"].totalSpent,
-      buyLots: holdingsMap["SMCI"].buyLots,
-      transactionCount: holdingsMap["SMCI"].transactions.length,
-    });
-  }
-
-  // Get unique symbols for price fetching
-  const symbols = Object.keys(holdingsMap).filter(
-    (symbol) => holdingsMap[symbol].totalShares > 0
-  );
-
-  // Calculate basic metrics for each holding without prices first
+  // Calculate basic metrics for each holding
   const basicHoldings = Object.values(holdingsMap)
     .filter((holding) => holding.totalShares > 0)
     .map((holding) => {
@@ -169,16 +108,13 @@ const calculatePortfolio = (transactions) => {
 
       return {
         symbol: holding.symbol,
-        avgBuyPrice,
-        position: holding.totalShares,
-        lastPrice,
+        totalShares: holding.totalShares,
+        averagePrice: avgBuyPrice,
         totalSpent: holding.totalSpent,
         totalValue,
+        lastPrice,
         unrealizedPL,
         unrealizedPLPercent,
-        realizedPL: 0,
-        entryReason: mockData.entryReason || "",
-        stopLoss: mockData.stopLoss || 0,
       };
     });
 
@@ -189,33 +125,8 @@ const calculatePortfolio = (transactions) => {
   const unrealizedPLPercent =
     totalSpent > 0 ? (unrealizedPL / totalSpent) * 100 : 0;
 
-  // Now calculate risk and portfolio percentage for each holding
-  const holdings = basicHoldings.map((holding) => {
-    // Risk $ = (totalValue - stopLoss * position) if stopLoss > 0
-    const riskDollar =
-      holding.stopLoss > 0 && holding.position > 0
-        ? Math.max(0, holding.totalValue - holding.stopLoss * holding.position)
-        : 0;
-
-    // Risk % = Risk $ as percentage of total portfolio value
-    const riskPercent = totalValue > 0 ? (riskDollar / totalValue) * 100 : 0;
-
-    // Total % = This holding's value as percentage of total portfolio
-    const totalPercent =
-      totalValue > 0 && holding.totalValue > 0
-        ? (holding.totalValue / totalValue) * 100
-        : 0;
-
-    return {
-      ...holding,
-      riskDollar,
-      riskPercent,
-      totalPercent,
-    };
-  });
-
   return {
-    holdings,
+    holdings: basicHoldings,
     totalSpent,
     totalValue,
     unrealizedPL,
@@ -224,11 +135,32 @@ const calculatePortfolio = (transactions) => {
 };
 
 export const usePortfolio = () => {
-  // Get all transactions without pagination for portfolio calculations
+  // State for sync status and loading strategy
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [shouldFetchTransactions, setShouldFetchTransactions] = useState(true);
+
+  // Get holdings data first (priority)
+  const {
+    data: holdingsData,
+    isLoading: holdingsLoading,
+    error: holdingsError,
+    refetch: refetchHoldings,
+  } = useQuery({
+    queryKey: ["holdings"],
+    queryFn: () =>
+      holdingsAPI.getAll().then((res) => {
+        console.log("Holdings data fetched:", res.data.data);
+        return res.data.data;
+      }),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
+
+  // Conditionally fetch transactions only when needed
   const {
     data: transactions,
-    isLoading,
-    error,
+    isLoading: transactionsLoading,
+    error: transactionsError,
   } = useQuery({
     queryKey: ["transactions", "all"],
     queryFn: () =>
@@ -242,9 +174,57 @@ export const usePortfolio = () => {
       }),
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
+    enabled: shouldFetchTransactions, // Only fetch when needed
   });
 
-  // Subscribe to portfolio symbols when transactions change
+  // Sync holdings with calculated portfolio data
+  const syncHoldings = useCallback(
+    async (transactionsData) => {
+      if (!transactionsData || transactionsData.length === 0) return;
+
+      setIsSyncing(true);
+      try {
+        const calculatedPortfolio = calculatePortfolio(transactionsData);
+        const holdingsToSync = calculatedPortfolio.holdings.map((holding) => ({
+          symbol: holding.symbol,
+          totalShares: holding.totalShares,
+          averagePrice: holding.averagePrice,
+          totalSpent: holding.totalSpent,
+          totalValue: holding.totalValue,
+          lastPrice: holding.lastPrice,
+        }));
+
+        console.log("Syncing holdings:", holdingsToSync);
+        await holdingsAPI.sync(holdingsToSync);
+        refetchHoldings();
+      } catch (error) {
+        console.error("Error syncing holdings:", error);
+      } finally {
+        setIsSyncing(false);
+      }
+    },
+    [refetchHoldings]
+  );
+
+  // Smart loading strategy
+  useEffect(() => {
+    if (holdingsData) {
+      const holdingsValid = areHoldingsValid(holdingsData);
+      console.log("Holdings valid:", holdingsValid);
+
+      if (holdingsValid) {
+        // Holdings are valid, skip transaction fetching
+        console.log("Holdings are valid, skipping transaction fetch");
+        setShouldFetchTransactions(false);
+      } else {
+        // Holdings are invalid, fetch transactions
+        console.log("Holdings are invalid, fetching transactions");
+        setShouldFetchTransactions(true);
+      }
+    }
+  }, [holdingsData]);
+
+  // Auto-sync when transactions are loaded
   useEffect(() => {
     if (transactions && transactions.length > 0) {
       const symbols = [...new Set(transactions.map((t) => t.ticker))];
@@ -252,13 +232,17 @@ export const usePortfolio = () => {
         // Subscribe to portfolio symbols
         transactionsAPI.subscribeToPortfolio(symbols);
       }
-    }
-  }, [transactions]);
 
-  // Calculate portfolio whenever transactions change
+      // Always sync when transactions are loaded (they were fetched because holdings were invalid)
+      console.log("Transactions loaded, syncing holdings");
+      syncHoldings(transactions);
+    }
+  }, [transactions, syncHoldings]);
+
+  // Calculate portfolio from holdings data directly
   const portfolioData = useMemo(() => {
-    if (!transactions) {
-      console.log("Portfolio calculation: No transactions data");
+    if (!holdingsData || holdingsData.length === 0) {
+      console.log("Portfolio calculation: No holdings data");
       return {
         holdings: [],
         totalSpent: 0,
@@ -270,23 +254,82 @@ export const usePortfolio = () => {
 
     console.log(
       "Portfolio calculation: Processing",
-      transactions.length,
-      "transactions"
-    );
-    // Calculate portfolio synchronously
-    const result = calculatePortfolio(transactions);
-    console.log(
-      "Portfolio calculation result:",
-      result.holdings.length,
+      holdingsData.length,
       "holdings"
     );
-    return result;
-  }, [transactions]);
+
+    // Calculate additional metrics for each holding
+    const portfolioHoldings = holdingsData.map((holding) => {
+      const unrealizedPL = holding.totalValue - holding.totalSpent;
+      const unrealizedPLPercent =
+        holding.totalSpent > 0 ? (unrealizedPL / holding.totalSpent) * 100 : 0;
+
+      // Risk $ = (totalValue - stopLoss * totalShares) if stopLoss > 0
+      const riskDollar =
+        holding.stopLoss > 0 && holding.totalShares > 0
+          ? Math.max(
+              0,
+              holding.totalValue - holding.stopLoss * holding.totalShares
+            )
+          : 0;
+
+      return {
+        symbol: holding.ticker,
+        avgBuyPrice: holding.averagePrice,
+        position: holding.totalShares,
+        lastPrice: holding.lastPrice,
+        totalSpent: holding.totalSpent,
+        totalValue: holding.totalValue,
+        unrealizedPL,
+        unrealizedPLPercent,
+        stopLoss: holding.stopLoss,
+        entryReason: holding.entryReason,
+        riskDollar,
+        riskPercent: 0, // Will be calculated after we have total portfolio value
+        totalPercent: 0, // Will be calculated after we have total portfolio value
+      };
+    });
+
+    // Calculate portfolio totals
+    const totalSpent = portfolioHoldings.reduce(
+      (sum, h) => sum + h.totalSpent,
+      0
+    );
+    const totalValue = portfolioHoldings.reduce(
+      (sum, h) => sum + h.totalValue,
+      0
+    );
+    const unrealizedPL = totalValue - totalSpent;
+    const unrealizedPLPercent =
+      totalSpent > 0 ? (unrealizedPL / totalSpent) * 100 : 0;
+
+    // Calculate risk and portfolio percentages
+    const finalHoldings = portfolioHoldings.map((holding) => ({
+      ...holding,
+      riskPercent: totalValue > 0 ? (holding.riskDollar / totalValue) * 100 : 0,
+      totalPercent:
+        totalValue > 0 ? (holding.totalValue / totalValue) * 100 : 0,
+    }));
+
+    console.log(
+      "Portfolio calculation result:",
+      finalHoldings.length,
+      "holdings"
+    );
+    return {
+      holdings: finalHoldings,
+      totalSpent,
+      totalValue,
+      unrealizedPL,
+      unrealizedPLPercent,
+    };
+  }, [holdingsData]);
 
   return {
     ...portfolioData,
-    isLoading,
-    error,
+    isLoading: transactionsLoading || holdingsLoading || isSyncing,
+    error: transactionsError || holdingsError,
+    isSyncing,
   };
 };
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { usePortfolio } from "../hooks/usePortfolio";
 import { PortfolioTableSkeleton } from "../components/Skeleton";
+import { holdingsAPI } from "../services/api";
 import "./Portfolio.css";
 
 function Portfolio() {
@@ -12,11 +13,13 @@ function Portfolio() {
     unrealizedPLPercent,
     isLoading,
     error,
+    isSyncing,
   } = usePortfolio();
 
   // State for editable values
   const [editedHoldings, setEditedHoldings] = useState({});
   const [hasChanges, setHasChanges] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   // State for collapsed columns
   const [collapsedColumns, setCollapsedColumns] = useState(new Set());
@@ -24,6 +27,7 @@ function Portfolio() {
   // Initialize edited holdings when data loads
   useEffect(() => {
     if (holdings.length > 0) {
+      console.log("Initializing edited holdings with:", holdings);
       const initialValues = {};
       holdings.forEach((holding) => {
         initialValues[holding.symbol] = {
@@ -31,6 +35,7 @@ function Portfolio() {
           entryReason: holding.entryReason || "",
         };
       });
+      console.log("Initial values set:", initialValues);
       setEditedHoldings(initialValues);
     }
   }, [holdings]);
@@ -49,14 +54,23 @@ function Portfolio() {
 
   // Handle update
   const handleUpdate = async () => {
+    if (isUpdating) return;
+
+    setIsUpdating(true);
     try {
-      // TODO: Call API to update holdings
-      console.log("Updating holdings:", editedHoldings);
+      const updatePromises = Object.entries(editedHoldings).map(
+        ([symbol, data]) => holdingsAPI.update(symbol, data)
+      );
+
+      await Promise.all(updatePromises);
       setHasChanges(false);
-      // Show success message
+      console.log("Holdings updated successfully");
+      alert("Holdings updated successfully!");
     } catch (error) {
       console.error("Error updating holdings:", error);
-      // Show error message
+      alert("Error updating holdings. Please try again.");
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -151,6 +165,9 @@ function Portfolio() {
       {holdings.length > 0 ? (
         <div className="portfolio-container">
           <div className="portfolio-controls">
+            {isSyncing && (
+              <div className="sync-indicator">🔄 Syncing holdings...</div>
+            )}
             <button onClick={toggleAllColumns} className="toggle-all-button">
               {collapsedColumns.size === 0 ? "▼ Collapse All" : "▶ Expand All"}
             </button>

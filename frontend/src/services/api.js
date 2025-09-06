@@ -80,4 +80,12 @@ export const transactionsAPI = {
     api.post("/transactions/prices/subscribe-portfolio", { symbols }),
 };
 
+// Holdings API
+export const holdingsAPI = {
+  getAll: () => api.get("/holdings"),
+  sync: (holdings) => api.post("/holdings/sync", { holdings }),
+  invalidate: (tickers) => api.post("/holdings/invalidate", { tickers }),
+  update: (ticker, data) => api.put(`/holdings/${ticker}`, data),
+};
+
 export default api;

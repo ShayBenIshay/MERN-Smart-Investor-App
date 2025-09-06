@@ -30,12 +30,22 @@ export interface TransactionFormData {
 
 // Portfolio types
 export interface Holding {
+  _id: string;
   ticker: string;
+  stopLoss: number;
+  entryReason: string;
+  // Calculated fields
   totalShares: number;
   averagePrice: number;
-  totalInvested: number;
-  currentValue: number;
-  transactions: Transaction[];
+  totalSpent: number;
+  totalValue: number;
+  unrealizedPL: number;
+  unrealizedPLPercent: number;
+  riskDollar: number;
+  riskPercent: number;
+  totalPercent: number;
+  lastPrice: number;
+  position: number;
 }
 
 export interface Portfolio {

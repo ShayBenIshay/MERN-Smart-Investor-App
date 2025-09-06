@@ -1,6 +1,7 @@
 const express = require("express");
 const Transaction = require("../models/Transaction");
 const User = require("../models/User");
+const Holding = require("../models/Holding");
 const auth = require("../middleware/auth");
 const asyncHandler = require("../utils/asyncHandler");
 const {
@@ -10,6 +11,24 @@ const {
 } = require("../middleware/cache");
 const { transactionValidation } = require("../middleware/joiValidation");
 const mongoose = require("mongoose");
+
+// Helper function to invalidate holdings for specific tickers
+const invalidateHoldingsForTickers = async (userId, tickers) => {
+  try {
+    await Holding.updateMany(
+      {
+        userId,
+        ticker: { $in: tickers.map((t) => t.toUpperCase()) },
+      },
+      {
+        lastSyncedAt: null,
+      }
+    );
+    console.log(`Invalidated holdings for tickers: ${tickers.join(", ")}`);
+  } catch (error) {
+    console.error("Error invalidating holdings:", error);
+  }
+};
 
 const router = express.Router();
 
@@ -170,6 +189,9 @@ router.post(
 
       await session.commitTransaction();
 
+      // Invalidate holdings for this ticker
+      await invalidateHoldingsForTickers(req.user._id, [ticker]);
+
       res.status(201).json({
         success: true,
         data: transaction,
@@ -227,17 +249,30 @@ router.put(
   "/:id",
   auth,
   asyncHandler(async (req, res) => {
+    // Get the original transaction to check if ticker changed
+    const originalTransaction = await Transaction.findOne({
+      _id: req.params.id,
+      userId: req.user._id,
+    });
+
+    if (!originalTransaction) {
+      const error = new Error("Transaction not found");
+      error.statusCode = 404;
+      throw error;
+    }
+
     const transaction = await Transaction.findOneAndUpdate(
       { _id: req.params.id, userId: req.user._id },
       req.body,
       { new: true, runValidators: true }
     );
 
-    if (!transaction) {
-      const error = new Error("Transaction not found");
-      error.statusCode = 404;
-      throw error;
+    // Invalidate holdings for both old and new tickers
+    const tickersToInvalidate = [originalTransaction.ticker];
+    if (req.body.ticker && req.body.ticker !== originalTransaction.ticker) {
+      tickersToInvalidate.push(req.body.ticker);
     }
+    await invalidateHoldingsForTickers(req.user._id, tickersToInvalidate);
 
     res.json({
       success: true,
@@ -298,6 +333,9 @@ router.delete(
       await user.save({ session });
 
       await session.commitTransaction();
+
+      // Invalidate holdings for this ticker
+      await invalidateHoldingsForTickers(req.user._id, [transaction.ticker]);
 
       res.json({
         success: true,

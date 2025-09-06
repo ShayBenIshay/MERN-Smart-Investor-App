@@ -94,10 +94,9 @@ const calculatePortfolio = (transactions) => {
       const avgBuyPrice =
         holding.totalShares > 0 ? holding.totalSpent / holding.totalShares : 0;
 
-      const mockData = getMockHoldingData(holding.symbol);
-
-      // Use mock price for now - prices will be updated via real-time subscriptions
-      const lastPrice = mockData.price || 0;
+      // Use real price from holdings database (updated via WebSocket)
+      // For syncing, we'll use a placeholder that will be updated by the real-time system
+      const lastPrice = 0; // This will be updated by the WebSocket price updates
 
       const totalValue = holding.totalShares * lastPrice;
       const unrealizedPL = totalValue - holding.totalSpent;
@@ -185,13 +184,27 @@ export const usePortfolio = () => {
       setIsSyncing(true);
       try {
         const calculatedPortfolio = calculatePortfolio(transactionsData);
+
+        // Fetch real-time prices for all symbols
+        const symbols = calculatedPortfolio.holdings.map((h) => h.symbol);
+        const pricePromises = symbols.map((symbol) =>
+          transactionsAPI
+            .getPrice(symbol)
+            .catch(() => ({ data: { data: { price: 0 } } }))
+        );
+        const priceResponses = await Promise.all(pricePromises);
+        const priceMap = {};
+        priceResponses.forEach((response, index) => {
+          priceMap[symbols[index]] = response.data.data.price || 0;
+        });
+
         const holdingsToSync = calculatedPortfolio.holdings.map((holding) => ({
           symbol: holding.symbol,
           totalShares: holding.totalShares,
           averagePrice: holding.averagePrice,
           totalSpent: holding.totalSpent,
-          totalValue: holding.totalValue,
-          lastPrice: holding.lastPrice,
+          totalValue: holding.totalShares * (priceMap[holding.symbol] || 0),
+          lastPrice: priceMap[holding.symbol] || 0,
         }));
 
         console.log("Syncing holdings:", holdingsToSync);
@@ -333,25 +346,4 @@ export const usePortfolio = () => {
   };
 };
 
-// Mock data with entry reasons and stop losses from CSV
-const getMockHoldingData = (symbol) => {
-  const holdingData = {
-    TSLA: { price: 333.86, entryReason: "טסלה - לא מוכר", stopLoss: 268.0 },
-    NVDA: { price: 174.11, entryReason: "", stopLoss: 0 },
-    META: { price: 738.7, entryReason: "", stopLoss: 671.8 },
-    PLTR: { price: 156.71, entryReason: "", stopLoss: 0 },
-    RGTI: {
-      price: 16.23,
-      entryReason: "סטופ מתחת לתמיכה ב13.5$",
-      stopLoss: 13.47,
-    },
-    INVZ: {
-      price: 1.67,
-      entryReason: "סטופ גמיש לPenny סטוק וולטילי - להדק אחרי עליות",
-      stopLoss: 0.79,
-    },
-    BMNR: { price: 43.62, entryReason: "", stopLoss: 0 },
-    ETHA: { price: 32.82, entryReason: "", stopLoss: 25.1 },
-  };
-  return holdingData[symbol] || { price: 100, entryReason: "", stopLoss: 0 };
-};
+// Mock data function removed - now using real-time prices from WebSocket

@@ -78,10 +78,11 @@ function Home() {
         <ul
           style={{ textAlign: "left", maxWidth: "400px", margin: "1rem auto" }}
         >
-          <li>Dashboard with portfolio overview</li>
+          <li>Batch transactions updates</li>
           <li>Market news and updates</li>
-          <li>Investment recommendations</li>
           <li>Performance analytics</li>
+          <li>Multiple Portfolios</li>
+          <li>Agent recommendations</li>
         </ul>
       </div>
     </div>

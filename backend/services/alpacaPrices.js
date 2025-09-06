@@ -41,6 +41,9 @@ class AlpacaPrices {
         if (message.T && message.S && message.p) {
           this.prices.set(message.S, parseFloat(message.p));
           console.log(`Updated price for ${message.S}: $${message.p}`);
+
+          // Update holdings in database with real-time price
+          this.updateHoldingsWithPrice(message.S, parseFloat(message.p));
         }
       });
     });
@@ -189,6 +192,30 @@ class AlpacaPrices {
       subscribedSymbols: Array.from(this.subscribedSymbols),
       pricesCount: this.prices.size,
     };
+  }
+
+  // Update holdings in database with real-time price
+  async updateHoldingsWithPrice(symbol, price) {
+    try {
+      const Holding = require("../models/Holding");
+
+      // Update all holdings for this symbol with the new price
+      const result = await Holding.updateMany(
+        { ticker: symbol.toUpperCase() },
+        {
+          lastPrice: price,
+          totalValue: { $multiply: ["$totalShares", price] }, // Recalculate totalValue
+        }
+      );
+
+      if (result.modifiedCount > 0) {
+        console.log(
+          `Updated ${result.modifiedCount} holdings for ${symbol} with price $${price}`
+        );
+      }
+    } catch (error) {
+      console.error(`Error updating holdings for ${symbol}:`, error.message);
+    }
   }
 }
 

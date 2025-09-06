@@ -54,6 +54,18 @@ app.use(
 app.use("/api/auth", authRoutes);
 app.use("/api/transactions", transactionRoutes);
 
+// Add this debug line
+console.log("Registered transaction routes:");
+transactionRoutes.stack.forEach((middleware) => {
+  if (middleware.route) {
+    console.log(
+      `  ${Object.keys(middleware.route.methods).join(", ").toUpperCase()} ${
+        middleware.route.path
+      }`
+    );
+  }
+});
+
 // Add this after your existing routes
 const alpacaPrices = require("./services/alpacaPrices");
 alpacaPrices.connect();

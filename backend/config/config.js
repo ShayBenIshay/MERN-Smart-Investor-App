@@ -22,6 +22,9 @@ const envSchema = Joi.object({
     otherwise: Joi.string().default("dev_secret_key_change_in_production"),
   }),
   FRONTEND_URL: Joi.string().uri().default("http://localhost:3000"),
+  // Alpaca API configuration
+  ALPACA_API_KEY: Joi.string().required(),
+  ALPACA_SECRET_KEY: Joi.string().required(),
 }).unknown();
 
 // Validate environment variables
@@ -37,6 +40,10 @@ module.exports = {
     jwtSecret: env.JWT_SECRET,
     frontendUrl: env.FRONTEND_URL,
     corsOrigin: env.FRONTEND_URL,
+    alpaca: {
+      apiKey: env.ALPACA_API_KEY,
+      secretKey: env.ALPACA_SECRET_KEY,
+    },
   },
   production: {
     port: env.PORT,
@@ -44,6 +51,10 @@ module.exports = {
     jwtSecret: env.JWT_SECRET,
     frontendUrl: env.FRONTEND_URL,
     corsOrigin: env.FRONTEND_URL || false,
+    alpaca: {
+      apiKey: env.ALPACA_API_KEY,
+      secretKey: env.ALPACA_SECRET_KEY,
+    },
   },
   test: {
     port: env.PORT || 5001,
@@ -51,5 +62,9 @@ module.exports = {
     jwtSecret: "test_secret",
     frontendUrl: env.FRONTEND_URL,
     corsOrigin: env.FRONTEND_URL,
+    alpaca: {
+      apiKey: env.ALPACA_API_KEY,
+      secretKey: env.ALPACA_SECRET_KEY,
+    },
   },
 };

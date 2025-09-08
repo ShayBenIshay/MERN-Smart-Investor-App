@@ -78,7 +78,6 @@ function Home() {
         <ul
           style={{ textAlign: "left", maxWidth: "400px", margin: "1rem auto" }}
         >
-          <li>Batch transactions updates</li>
           <li>Market news and updates</li>
           <li>Performance analytics</li>
           <li>Multiple Portfolios</li>

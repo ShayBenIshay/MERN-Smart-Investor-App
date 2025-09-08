@@ -31,7 +31,7 @@ A MERN application to track stock transactions and portfolio holdings with authe
 ### 1) Clone
 
 ```bash
-git clone <this-repo>
+git clone https://github.com/ShayBenIshay/MERN-Smart-Investor-App.git
 cd MERN-Smart-Investor-App
 ```
 
@@ -46,19 +46,21 @@ npm run install-all
 Create `backend/.env`:
 
 ```bash
-NODE_ENV=development
+NODE_ENV= "development" || "production"
 PORT=5000
-MONGODB_URI=mongodb://localhost:27017/smart-investor-dev
-JWT_SECRET=dev_secret_key_change_in_production
+MONGODB_URI=<your mongodb uri>
 FRONTEND_URL=http://localhost:3000
-
-# Tokens (optional overrides)
-JWT_ACCESS_TOKEN_DURATION=1h
-JWT_REFRESH_TOKEN_DURATION=7d
 
 # Required for live prices
 ALPACA_API_KEY=your_alpaca_api_key
 ALPACA_SECRET_KEY=your_alpaca_secret
+
+
+JWT_SECRET=dev_secret_key_change_in_production
+# Tokens (optional overrides)
+JWT_ACCESS_TOKEN_DURATION=1h
+JWT_REFRESH_TOKEN_DURATION=7d
+
 ```
 
 ### Optional: Frontend environment
@@ -75,16 +77,6 @@ Option A: Run both servers concurrently from project root (recommended):
 
 ```bash
 npm run dev
-```
-
-Option B: Run each separately:
-
-```bash
-# Terminal 1
-cd backend && npm run dev
-
-# Terminal 2
-cd frontend && npm start
 ```
 
 ### Auth
